@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeSlayer // Prompt Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080a0c;
+  --surface:   #0e1114;
+  --surface2:  #161b20;
+  --surface3:  #1d2329;
+  --border:    #232a31;
+  --border2:   #2e3840;
+  --acc:       #e8ff47;
+  --acc-dim:   #3d4400;
+  --acc-glow:  rgba(232,255,71,0.08);
+  --red:       #ff3d5a;
+  --red-dim:   #3d0010;
+  --blue:      #47b4ff;
+  --blue-dim:  #00243d;
+  --green:     #47ffb4;
+  --text:      #d4dde6;
+  --muted:     #4a5663;
+  --muted2:    #6b7d8e;
+  --sidebar-w: 260px;
+  --header-h:  48px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TOP HEADER BAR ── */
+#header {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+#header-logo {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  position: relative;
+  display: inline-block;
+  padding: 2px 0;
+}
+
+#header-logo::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--muted) 15%, var(--muted) 85%, transparent 100%);
+  opacity: 0.4;
+}
+
+#header-logo span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  margin-left: 10px;
+  font-weight: 400;
+}
+
+#mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px;
+}
+
+.mode-tab {
+  padding: 4px 14px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--muted2);
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.15s;
+}
+.mode-tab.active { background: var(--surface2); color: var(--acc); }
+.mode-tab:hover:not(.active) { color: var(--text); }
+
+#header-spacer { flex: 1; }
+
+#basedir-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0 10px;
+  height: 30px;
+  min-width: 260px;
+}
+
+#basedir-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+#basedir-input {
+  background: none; border: none; color: var(--blue);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  outline: none; flex: 1; min-width: 0;
+}
+#basedir-input::placeholder { color: var(--muted); }
+
+/* ── LAYOUT ── */
+#layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+#sidebar-section {
+  padding: 10px 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#item-list { flex: 1; overflow-y: auto; padding: 6px; }
+#item-list::-webkit-scrollbar { width: 3px; }
+#item-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.list-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+  transition: all 0.12s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.list-item:hover { background: var(--surface2); border-color: var(--border); }
+.list-item.active { background: var(--surface2); border-color: var(--acc-dim); }
+.list-item.active .item-title { color: var(--acc); }
+
+.item-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 20px;
+}
+
+.item-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.item-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.badge-task { background: var(--blue-dim); color: var(--blue); }
+.badge-prompt { background: var(--acc-dim); color: var(--acc); }
+.badge-done { background: #1a2a1a; color: var(--green); }
+.badge-blocked { background: var(--red-dim); color: var(--red); }
+
+.item-date { font-size: 10px; color: var(--muted); }
+
+.item-del {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; opacity: 0; transition: all 0.12s; line-height: 1; padding: 2px;
+}
+.list-item:hover .item-del { opacity: 1; }
+.item-del:hover { color: var(--red); }
+
+#new-btn {
+  margin: 6px;
+  padding: 8px;
+  background: none;
+  border: 1px dashed var(--border2);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.06em;
+}
+#new-btn:hover { border-color: var(--acc); color: var(--acc); }
+
+/* ── MAIN PANEL ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#topbar {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+#name-input {
+  flex: 1;
+  background: none; border: none;
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 500; font-size: 15px;
+  outline: none;
+}
+#name-input::placeholder { color: var(--muted); }
+
+#template-select, #status-select {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; outline: none; cursor: pointer;
+}
+#template-select:focus, #status-select:focus { border-color: var(--acc); }
+
+/* ── FIELDS ── */
+#fields-wrap { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+#fields-wrap::-webkit-scrollbar { width: 3px; }
+#fields-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.field {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.field:focus-within { border-color: var(--acc-dim); box-shadow: 0 0 0 1px var(--acc-dim); }
+
+.field-head {
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-num {
+  width: 16px; height: 16px;
+  background: var(--acc-dim); color: var(--acc);
+  border-radius: 2px;
+  display: grid; place-items: center;
+  font-size: 8px; font-weight: 600;
+  flex-shrink: 0;
+}
+
+.field-name {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--acc);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.field-hint { margin-left: auto; font-size: 10px; color: var(--muted); }
+
+/* File pills row */
+.file-row {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-height: 32px;
+  background: var(--bg);
+}
+
+.file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--blue-dim);
+  border: 1px solid #003a5e;
+  color: var(--blue);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: default;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.file-pill-del {
+  background: none; border: none;
+  color: #3a6a8a; cursor: pointer;
+  font-size: 12px; line-height: 1;
+  padding: 0 0 0 2px;
+  transition: color 0.12s;
+}
+.file-pill-del:hover { color: var(--red); }
+
+.file-add-input {
+  background: none; border: none;
+  color: var(--blue);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  min-width: 120px;
+  flex: 1;
+}
+.file-add-input::placeholder { color: var(--muted); }
+
+.field-ta {
+  width: 100%;
+  background: none; border: none;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; line-height: 1.75;
+  padding: 10px 12px;
+  resize: none; outline: none;
+  min-height: 72px;
+  overflow-y: hidden;
+}
+.field-ta::placeholder { color: var(--muted); font-size: 12px; }
+
+/* ── ACTIONS BAR ── */
+#actions {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 7px 16px;
+  border-radius: 4px; border: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  letter-spacing: 0.07em; text-transform: uppercase;
+}
+.btn-primary { background: var(--acc); color: #000; }
+.btn-primary:hover { background: #f0ff70; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+.btn-secondary:hover { border-color: var(--acc); color: var(--acc); }
+.btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid #5a1020; }
+.btn-danger:hover { background: #5a1020; }
+
+#char-count { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+/* ── PREVIEW PANEL ── */
+#preview-panel {
+  width: 380px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#preview-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#preview-copy {
+  background: none; border: 1px solid var(--border2);
+  color: var(--muted2); font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; padding: 3px 10px; border-radius: 3px;
+  cursor: pointer; letter-spacing: 0.06em; transition: all 0.15s;
+}
+#preview-copy:hover { border-color: var(--acc); color: var(--acc); }
+
+#preview-text {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#preview-text::-webkit-scrollbar { width: 3px; }
+#preview-text::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.preview-section-head { color: var(--acc); font-weight: 600; }
+.preview-file-list { color: var(--blue); }
+.preview-body { color: var(--text); }
+
+/* ── EMPTY STATE ── */
+#empty {
+  flex: 1; display: flex;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+  color: var(--muted);
+}
+#empty-glyph {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 48px;
+  font-weight: 300;
+  color: var(--surface3);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  line-height: 1;
+  position: relative;
+}
+#empty-glyph::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--acc); color: #000;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  padding: 8px 16px; border-radius: 4px;
+  opacity: 0; transform: translateY(6px);
+  transition: all 0.18s; pointer-events: none;
+  letter-spacing: 0.06em;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── SCROLLBAR GLOBAL ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- TOP HEADER -->
+<div id="header">
+  <div id="header-logo">TradeSlayer <span>// prompt manager</span></div>
+  <div id="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('prompt')" id="tab-prompt">Prompts</button>
+    <button class="mode-tab" onclick="setMode('task')" id="tab-task">Tasks</button>
+  </div>
+  <div id="header-spacer"></div>
+  <div id="basedir-wrap">
+    <span id="basedir-label">base dir</span>
+    <input id="basedir-input" type="text" placeholder="~/projects/tradeslayer" spellcheck="false">
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div id="layout">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-section">
+      <span id="sidebar-label">prompts</span>
+      <span id="item-count" style="color:var(--muted2)">0</span>
+    </div>
+    <div id="item-list"></div>
+    <button id="new-btn" onclick="newItem()">+ New</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar" style="display:none">
+      <input id="name-input" type="text" placeholder="Untitled" maxlength="80" oninput="saveCurrent()">
+      <select id="template-select" onchange="changeTemplate()">
+        <optgroup label="── Prompt Templates ──">
+          <option value="claude_code">Claude Code Task</option>
+          <option value="promptology">Promptology</option>
+          <option value="general">General</option>
+          <option value="dev">Dev / Code</option>
+        </optgroup>
+        <optgroup label="── TradeSlayer ──">
+          <option value="ts_signal">TS — Signal Engine</option>
+          <option value="ts_ui">TS — Frontend Component</option>
+          <option value="ts_schema">TS — Schema / DB</option>
+          <option value="ts_debug">TS — Debug Session</option>
+        </optgroup>
+      </select>
+      <select id="status-select" onchange="saveCurrent()" style="display:none">
+        <option value="ready">● Ready</option>
+        <option value="in_progress">◎ In Progress</option>
+        <option value="done">✓ Done</option>
+        <option value="blocked">✗ Blocked</option>
+      </select>
+    </div>
+
+    <div id="fields-wrap" style="display:none"></div>
+
+    <div id="actions" style="display:none">
+      <button class="btn btn-primary" onclick="copyPrompt()">Copy Prompt</button>
+      <button class="btn btn-secondary" onclick="saveMd()">Save .md</button>
+      <button class="btn btn-secondary" onclick="copyRaw()">Copy Raw</button>
+      <span id="char-count">0 chars</span>
+    </div>
+
+    <div id="empty">
+      <div id="empty-glyph">nQ</div>
+      <p style="font-size:11px">No item selected</p>
+      <button class="btn btn-secondary" onclick="newItem()" style="margin-top:4px">+ New</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="preview-panel">
+    <div id="preview-header">
+      <span>Output Preview</span>
+      <button id="preview-copy" onclick="copyPrompt()">Copy</button>
+    </div>
+    <div id="preview-text"><span style="color:var(--surface3)">// output will appear here</span></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// TEMPLATES
+// ─────────────────────────────────────────────
+const TEMPLATES = {
+  claude_code: {
+    label: 'Claude Code Task',
+    isTask: true,
+    fields: [
+      { key:'task_id',   label:'Task ID',        hint:'e.g. S1-03',            hasFiles: false, placeholder:'S1-03' },
+      { key:'objective', label:'Objective',       hint:'one sentence goal',     hasFiles: false, placeholder:'Wire useTradeLog composable to GET /trades endpoint' },
+      { key:'files',     label:'Files to Change', hint:'exact paths only',      hasFiles: true,  placeholder:'' },
+      { key:'depends',   label:'Depends On',      hint:'task IDs this needs',   hasFiles: false, placeholder:'S1-01 (FastAPI trades endpoint), S1-02 (SQLite schema)' },
+      { key:'scope',     label:'Scope / Rules',   hint:'what NOT to touch',     hasFiles: false, placeholder:'Do not touch anything outside the listed files.\nTypeScript strict. Async everywhere.' },
+      { key:'notes',     label:'Implementation Notes', hint:'context for claude', hasFiles: false, placeholder:'useTradeLog should expose: trades ref, loading ref, refetch(). Calls GET /trades, maps response to TradeRecord[]' },
+    ]
+  },
+  promptology: {
+    label: 'Promptology',
+    isTask: false,
+    fields: [
+      { key:'role',   label:'Role / Context',     hint:'who you are + constraints',  hasFiles: false, placeholder:'Active day trader. MES/ES futures. Platform: Schwab. Data: Massive API...' },
+      { key:'goal',   label:'Goal',                hint:'session-level objective',    hasFiles: false, placeholder:'Build a gap scanner that filters for clean ORBs above VWAP...' },
+      { key:'theory', label:'Background / Theory', hint:'what you believe is true',   hasFiles: false, placeholder:'High volume gaps over $2 tend to hold above VWAP in first 30min...' },
+      { key:'state',  label:'Current State',       hint:'code / data / prior output', hasFiles: false, placeholder:'Paste existing code, output, or context...' },
+      { key:'task',   label:'Task',                hint:'exact imperative ask',       hasFiles: false, placeholder:'Write a Python scanner that pulls gap data from Massive API and filters by...' },
+      { key:'output', label:'Output Format',       hint:'how you want the response',  hasFiles: false, placeholder:'Code only. Inline comments. Trader shorthand for labels...' },
+    ]
+  },
+  general: {
+    label: 'General',
+    isTask: false,
+    fields: [
+      { key:'role',    label:'Role / Persona', hint:'who the AI acts as',           hasFiles: false, placeholder:'Senior Architect...' },
+      { key:'context', label:'Context',        hint:'background information',        hasFiles: false, placeholder:'We are building a...' },
+      { key:'task',    label:'Specific Task',  hint:'the active imperative ask',     hasFiles: false, placeholder:'Write a summary...' },
+      { key:'output',  label:'Output Format',  hint:'how the response should look',  hasFiles: false, placeholder:'Markdown list...' },
+    ]
+  },
+  dev: {
+    label: 'Dev / Code',
+    isTask: false,
+    fields: [
+      { key:'env',   label:'Tech Stack',      hint:'tools, versions, platforms',  hasFiles: false, placeholder:'Python 3.12, FastAPI, Nuxt 4, SQLite...' },
+      { key:'files', label:'Reference Files', hint:'files to read',               hasFiles: true,  placeholder:'' },
+      { key:'state', label:'Reference Code',  hint:'raw code',                    hasFiles: false, placeholder:'Paste existing code here...' },
+      { key:'task',  label:'Specific Task',   hint:'the active imperative ask',   hasFiles: false, placeholder:'Refactor this function for...' },
+      { key:'rules', label:'Constraints',     hint:'what NOT to do',              hasFiles: false, placeholder:'Keep architecture minimalist. No new dependencies...' },
+    ]
+  },
+  ts_signal: {
+    label: 'TS — Signal Engine',
+    isTask: false,
+    fields: [
+      { key:'signal',  label:'Signal / Module',    hint:'which signal are we building',  hasFiles: false, placeholder:'e.g. regime.py — HTF regime classifier' },
+      { key:'files',   label:'Files to Change',    hint:'exact paths',                   hasFiles: true,  placeholder:'' },
+      { key:'inputs',  label:'Inputs',             hint:'data sources & types',          hasFiles: false, placeholder:'Schwab timesale_futures stream. Fields: price, size, bid, ask...' },
+      { key:'outputs', label:'Outputs / Events',   hint:'what this emits',               hasFiles: false, placeholder:'Emits regime: DISTRIBUTION | ACCUMULATION | RANGE | LIQUIDATION | TREND_UP | TREND_DOWN' },
+      { key:'math',    label:'Math / Algorithm',   hint:'approach to implement',         hasFiles: false, placeholder:'HMM with 6 states. Kalman filter for trend estimation...' },
+      { key:'rules',   label:'Constraints',        hint:'what NOT to do',                hasFiles: false, placeholder:'No blocking calls. Full type hints. Do not touch trade logging...' },
+    ]
+  },
+  ts_ui: {
+    label: 'TS — Frontend Component',
+    isTask: false,
+    fields: [
+      { key:'component', label:'Component',         hint:'name + route',              hasFiles: false, placeholder:'RegimeBanner.vue — persistent top bar on all pages' },
+      { key:'files',     label:'Files to Change',   hint:'exact paths',               hasFiles: true,  placeholder:'' },
+      { key:'data',      label:'Data / Props',      hint:'what it consumes',          hasFiles: false, placeholder:'useRegime composable. Expects: { regime: string, flags: string[] }' },
+      { key:'behavior',  label:'Behavior',          hint:'interactions & state',      hasFiles: false, placeholder:'Updates every SSE regime event. Color shifts by regime type. Flags shown as dismissible chips...' },
+      { key:'layout',    label:'Layout Notes',      hint:'structure, not style',      hasFiles: false, placeholder:'Fixed top bar. Regime label left. Flags right. No styling beyond layout Tailwind...' },
+      { key:'rules',     label:'Constraints',       hint:'what NOT to do',            hasFiles: false, placeholder:'Stock Tailwind only — no custom CSS yet. TypeScript strict. No hardcoded data...' },
+    ]
+  },
+  ts_schema: {
+    label: 'TS — Schema / DB',
+    isTask: false,
+    fields: [
+      { key:'table',   label:'Table / Schema',    hint:'what we are defining',        hasFiles: false, placeholder:'rule_checks — junction between trades and rules with confidence level' },
+      { key:'files',   label:'Files to Change',   hint:'exact paths',                 hasFiles: true,  placeholder:'' },
+      { key:'fields',  label:'Fields',            hint:'columns + types',             hasFiles: false, placeholder:'id TEXT PK, trade_id TEXT FK, rule_id TEXT FK, confidence TEXT (none|weak|moderate|strong)' },
+      { key:'queries', label:'Required Queries',  hint:'what needs to be queryable',  hasFiles: false, placeholder:'Win rate by rule_id. Avg confidence for winning trades. Rules skipped per session...' },
+      { key:'rules',   label:'Constraints',       hint:'what NOT to do',              hasFiles: false, placeholder:'DuckDB syntax. Full type hints on all query functions. No raw string SQL in routes...' },
+    ]
+  },
+  ts_debug: {
+    label: 'TS — Debug Session',
+    isTask: false,
+    fields: [
+      { key:'symptom', label:'Symptom',           hint:'what is broken / wrong',      hasFiles: false, placeholder:'useTradeLog composable returns empty array after POST succeeds' },
+      { key:'files',   label:'Relevant Files',    hint:'exact paths',                 hasFiles: true,  placeholder:'' },
+      { key:'error',   label:'Error / Output',    hint:'paste exact error or log',    hasFiles: false, placeholder:'Paste stack trace, console output, or unexpected value...' },
+      { key:'tried',   label:'Already Tried',     hint:'what you have attempted',     hasFiles: false, placeholder:'Confirmed POST returns 201. Checked network tab — GET /trades returns correct data...' },
+      { key:'scope',   label:'Scope',             hint:'what NOT to change',          hasFiles: false, placeholder:'Do not refactor. Fix only. Do not touch python/ files...' },
+    ]
+  },
+};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let items = JSON.parse(localStorage.getItem('ts_pm_items') || '{}');
+let activeId = null;
+let currentMode = 'prompt';
+let baseDir = localStorage.getItem('ts_pm_basedir') || '~/projects/tradeslayer';
+
+document.getElementById('basedir-input').value = baseDir;
+document.getElementById('basedir-input').addEventListener('input', e => {
+  baseDir = e.target.value;
+  localStorage.setItem('ts_pm_basedir', baseDir);
+  updatePreview();
+});
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ─────────────────────────────────────────────
+// MODE
+// ─────────────────────────────────────────────
+function setMode(m) {
+  currentMode = m;
+  document.getElementById('tab-prompt').classList.toggle('active', m === 'prompt');
+  document.getElementById('tab-task').classList.toggle('active', m === 'task');
+  document.getElementById('sidebar-label').textContent = m === 'task' ? 'tasks' : 'prompts';
+
+  // Set default template for mode
+  const sel = document.getElementById('template-select');
+  if (activeId) {
+    const tpl = m === 'task' ? 'claude_code' : 'promptology';
+    sel.value = tpl;
+    items[activeId].template = tpl;
+    save();
+    renderFields(activeId);
+  }
+  renderSidebar();
+}
+
+// ─────────────────────────────────────────────
+// ITEM CRUD
+// ─────────────────────────────────────────────
+function newItem() {
+  const id = genId();
+  const tpl = currentMode === 'task' ? 'claude_code' : 'promptology';
+  items[id] = { id, name:'', template: tpl, mode: currentMode, status:'ready', created: Date.now(), fields:{}, files:{} };
+  save();
+  loadItem(id);
+}
+
+function loadItem(id) {
+  activeId = id;
+  const item = items[id];
+  if (!item) return;
+
+  document.getElementById('empty').style.display = 'none';
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('fields-wrap').style.display = 'flex';
+  document.getElementById('actions').style.display = 'flex';
+
+  document.getElementById('name-input').value = item.name || '';
+  document.getElementById('template-select').value = item.template || 'promptology';
+
+  const statusSel = document.getElementById('status-select');
+  const tplDef = TEMPLATES[item.template];
+  statusSel.style.display = (tplDef && tplDef.isTask) ? 'block' : 'none';
+  statusSel.value = item.status || 'ready';
+
+  renderFields(id);
+  renderSidebar();
+}
+
+function deleteItem(id, e) {
+  e.stopPropagation();
+  delete items[id];
+  save();
+  if (activeId === id) {
+    activeId = null;
+    document.getElementById('topbar').style.display = 'none';
+    document.getElementById('fields-wrap').style.display = 'none';
+    document.getElementById('actions').style.display = 'none';
+    document.getElementById('empty').style.display = 'flex';
+    document.getElementById('preview-text').innerHTML = '<span style="color:var(--surface3)">// output will appear here</span>';
+  }
+  renderSidebar();
+}
+
+// ─────────────────────────────────────────────
+// TEMPLATE CHANGE
+// ─────────────────────────────────────────────
+function changeTemplate() {
+  if (!activeId) return;
+  const tpl = document.getElementById('template-select').value;
+  items[activeId].template = tpl;
+  const tplDef = TEMPLATES[tpl];
+  const statusSel = document.getElementById('status-select');
+  statusSel.style.display = (tplDef && tplDef.isTask) ? 'block' : 'none';
+  save();
+  renderFields(activeId);
+}
+
+// ─────────────────────────────────────────────
+// RENDER FIELDS
+// ─────────────────────────────────────────────
+function renderFields(id) {
+  const item = items[id];
+  const tpl = TEMPLATES[item.template] || TEMPLATES.promptology;
+  const fc = document.getElementById('fields-wrap');
+  fc.innerHTML = '';
+
+  tpl.fields.forEach((f, i) => {
+    const block = document.createElement('div');
+    block.className = 'field';
+
+    // Header
+    const head = document.createElement('div');
+    head.className = 'field-head';
+    head.innerHTML = `
+      <div class="field-num">${i+1}</div>
+      <div class="field-name">${f.label}</div>
+      <div class="field-hint">${f.hint}</div>
+    `;
+    block.appendChild(head);
+
+    // File pills row (if this field is a file field)
+    if (f.hasFiles) {
+      const fileRow = document.createElement('div');
+      fileRow.className = 'file-row';
+      fileRow.dataset.fieldKey = f.key;
+
+      const files = item.files[f.key] || [];
+      files.forEach(fp => {
+        fileRow.appendChild(makePill(fp, f.key));
+      });
+
+      const addInput = document.createElement('input');
+      addInput.className = 'file-add-input';
+      addInput.placeholder = 'path/to/file.ts  (Enter to add)';
+      addInput.spellcheck = false;
+      addInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const raw = addInput.value.trim().replace(/,$/, '');
+          if (raw) addFile(f.key, raw, fileRow, addInput);
+        }
+      });
+      addInput.addEventListener('paste', e => {
+        setTimeout(() => {
+          const val = addInput.value.trim();
+          if (val.includes('\n') || val.includes(',')) {
+            val.split(/[\n,]/).map(s => s.trim()).filter(Boolean).forEach(p => addFile(f.key, p, fileRow, addInput));
+            addInput.value = '';
+          }
+        }, 0);
+      });
+      fileRow.appendChild(addInput);
+      block.appendChild(fileRow);
+    }
+
+    // Textarea
+    const ta = document.createElement('textarea');
+    ta.className = 'field-ta';
+    ta.dataset.key = f.key;
+    ta.placeholder = f.placeholder || '';
+    ta.rows = 3;
+    ta.value = item.fields[f.key] || '';
+    ta.spellcheck = false;
+
+    if (f.hasFiles) ta.style.display = 'none'; // hide textarea for file-only fields
+
+    ta.addEventListener('input', () => { autoResize(ta); saveCurrent(); });
+    ta.addEventListener('keydown', handleTabNav);
+    block.appendChild(ta);
+
+    fc.appendChild(block);
+    setTimeout(() => autoResize(ta), 0);
+  });
+
+  updateCharCount();
+  updatePreview();
+}
+
+function makePill(filepath, fieldKey) {
+  const pill = document.createElement('div');
+  pill.className = 'file-pill';
+  // Show relative to basedir if applicable
+  const display = filepath.startsWith(baseDir) ? filepath.slice(baseDir.length).replace(/^\//, '') : filepath;
+  pill.innerHTML = `<span>${escHtml(display)}</span>`;
+  const del = document.createElement('button');
+  del.className = 'file-pill-del';
+  del.textContent = '×';
+  del.title = 'Remove';
+  del.onclick = () => {
+    if (!activeId) return;
+    const files = items[activeId].files[fieldKey] || [];
+    items[activeId].files[fieldKey] = files.filter(f => f !== filepath);
+    save();
+    pill.remove();
+    updatePreview();
+  };
+  pill.appendChild(del);
+  return pill;
+}
+
+function addFile(fieldKey, raw, fileRow, addInput) {
+  if (!activeId) return;
+  // Resolve against basedir if relative
+  const resolved = raw.startsWith('/') || raw.startsWith('~') || raw.startsWith('.') ? raw : baseDir + '/' + raw;
+  if (!items[activeId].files[fieldKey]) items[activeId].files[fieldKey] = [];
+  if (items[activeId].files[fieldKey].includes(resolved)) { addInput.value = ''; return; }
+  items[activeId].files[fieldKey].push(resolved);
+  save();
+  const pill = makePill(resolved, fieldKey);
+  fileRow.insertBefore(pill, addInput);
+  addInput.value = '';
+  updatePreview();
+}
+
+// ─────────────────────────────────────────────
+// SAVE
+// ─────────────────────────────────────────────
+function saveCurrent() {
+  if (!activeId) return;
+  const item = items[activeId];
+  item.name = document.getElementById('name-input').value;
+  item.status = document.getElementById('status-select').value;
+  document.querySelectorAll('.field-ta').forEach(ta => {
+    item.fields[ta.dataset.key] = ta.value;
+  });
+  item.updated = Date.now();
+  save();
+  renderSidebar();
+  updateCharCount();
+  updatePreview();
+}
+
+function save() { localStorage.setItem('ts_pm_items', JSON.stringify(items)); }
+
+// ─────────────────────────────────────────────
+// BUILD OUTPUT
+// ─────────────────────────────────────────────
+function buildOutput() {
+  if (!activeId) return '';
+  const item = items[activeId];
+  const tpl = TEMPLATES[item.template] || TEMPLATES.promptology;
+  const lines = [];
+
+  // For Claude Code tasks, prepend the task header
+  if (tpl.isTask) {
+    const taskId = (item.fields.task_id || '').trim();
+    const name = (item.name || 'Untitled Task').trim();
+    const status = (item.status || 'ready').toUpperCase();
+    const depends = (item.fields.depends || '').trim();
+    if (taskId || name) {
+      lines.push(`## [${taskId || '??'}] ${name}`);
+      if (depends) lines.push(`Depends on: ${depends}`);
+      lines.push(`Status: ${status}`);
+      lines.push('');
+    }
+  }
+
+  tpl.fields.forEach(f => {
+    if (f.key === 'task_id' || f.key === 'depends') return; // already in header
+
+    // File field
+    if (f.hasFiles) {
+      const files = (item.files[f.key] || []);
+      if (files.length === 0) return;
+      lines.push(`# ${f.label}`);
+      files.forEach(fp => lines.push(`- ${fp}`));
+      lines.push('');
+      return;
+    }
+
+    const val = (item.fields[f.key] || '').trim();
+    if (!val) return;
+
+    if (f.key === 'state' || f.key === 'error') {
+      lines.push(`# ${f.label}`);
+      lines.push('```');
+      lines.push(val);
+      lines.push('```');
+    } else {
+      lines.push(`# ${f.label}`);
+      lines.push(val);
+    }
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+// ─────────────────────────────────────────────
+// PREVIEW
+// ─────────────────────────────────────────────
+function updatePreview() {
+  const text = buildOutput();
+  const el = document.getElementById('preview-text');
+  if (!text) {
+    el.innerHTML = '<span style="color:var(--surface3)">// output will appear here</span>';
+    return;
+  }
+
+  // Syntax highlight the preview
+  let html = escHtml(text)
+    .replace(/^(## \[.*?\].*)/gm, '<span class="preview-section-head">$1</span>')
+    .replace(/^(# [A-Z].*)/gm, '<span class="preview-section-head">$1</span>')
+    .replace(/^(- ~.*|- \/.*)/gm, '<span class="preview-file-list">$1</span>')
+    .replace(/^(Status: .*)$/gm, '<span style="color:var(--muted2)">$1</span>')
+    .replace(/^(Depends on: .*)$/gm, '<span style="color:var(--muted2)">$1</span>');
+
+  el.innerHTML = html;
+}
+
+function updateCharCount() {
+  document.getElementById('char-count').textContent = buildOutput().length + ' chars';
+}
+
+// ─────────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────────
+function copyPrompt() {
+  saveCurrent();
+  const text = buildOutput();
+  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard'));
+}
+
+function copyRaw() {
+  saveCurrent();
+  navigator.clipboard.writeText(buildOutput()).then(() => toast('Raw copied'));
+}
+
+function saveMd() {
+  saveCurrent();
+  const item = items[activeId];
+  const text = buildOutput();
+  const name = (item.name || 'prompt').replace(/[^a-z0-9_\-]/gi, '_').toLowerCase();
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.md`;
+  a.click();
+  toast('Saved .md');
+}
+
+// ─────────────────────────────────────────────
+// SIDEBAR RENDER
+// ─────────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('item-list');
+  const all = Object.values(items);
+  const filtered = all.filter(i => (i.mode || 'prompt') === currentMode);
+  const sorted = filtered.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
+  document.getElementById('item-count').textContent = sorted.length;
+
+  list.innerHTML = sorted.map(item => {
+    const label = item.name || 'Untitled';
+    const date = new Date(item.updated || item.created).toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const tplDef = TEMPLATES[item.template] || {};
+    const badgeClass = tplDef.isTask
+      ? (item.status === 'done' ? 'badge-done' : item.status === 'blocked' ? 'badge-blocked' : 'badge-task')
+      : 'badge-prompt';
+    const badgeLabel = tplDef.isTask ? (item.status || 'ready') : (item.template || 'prompt');
+    return `
+      <div class="list-item ${item.id === activeId ? 'active' : ''}" onclick="loadItem('${item.id}')">
+        <div class="item-title">${escHtml(label)}</div>
+        <div class="item-meta">
+          <span class="item-badge ${badgeClass}">${escHtml(badgeLabel)}</span>
+          <span class="item-date">${date}</span>
+        </div>
+        <button class="item-del" onclick="deleteItem('${item.id}', event)" title="Delete">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.max(72, ta.scrollHeight) + 'px';
+}
+
+function handleTabNav(e) {
+  const ta = e.target;
+
+  // Tab / Shift+Tab → indent / unindent
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const val = ta.value;
+
+    if (start === end) {
+      // No selection — insert or remove 2 spaces at cursor
+      if (e.shiftKey) {
+        // Unindent: find line start, remove up to 2 leading spaces
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const line = val.slice(lineStart);
+        const spaces = line.match(/^ {1,2}/);
+        if (spaces) {
+          ta.value = val.slice(0, lineStart) + line.slice(spaces[0].length);
+          ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - spaces[0].length);
+        }
+      } else {
+        ta.value = val.slice(0, start) + '  ' + val.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + 2;
+      }
+    } else {
+      // Selection — indent/unindent each line
+      const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+      const block = val.slice(lineStart, end);
+      let result;
+      if (e.shiftKey) {
+        result = block.replace(/^( {1,2})/gm, '');
+      } else {
+        result = block.replace(/^/gm, '  ');
+      }
+      ta.value = val.slice(0, lineStart) + result + val.slice(end);
+      ta.selectionStart = lineStart;
+      ta.selectionEnd = lineStart + result.length;
+    }
+    saveCurrent();
+    autoResize(ta);
+    return;
+  }
+
+  // Enter → list autocomplete
+  if (e.key === 'Enter') {
+    const start = ta.selectionStart;
+    const val = ta.value;
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    const line = val.slice(lineStart, start);
+
+    // Match list prefixes: "  - ", "* ", "1. ", "  2. ", etc.
+    const listMatch = line.match(/^(\s*)([-*]\s|(\d+)\.\s)/);
+    if (listMatch) {
+      const indent = listMatch[1];
+      const bullet = listMatch[2];
+      const num = listMatch[3];
+
+      // If current line is empty except the bullet, clear it instead
+      const content = line.slice(listMatch[0].length);
+      if (!content.trim()) {
+        e.preventDefault();
+        ta.value = val.slice(0, lineStart) + '\n' + val.slice(start);
+        ta.selectionStart = ta.selectionEnd = lineStart + 1;
+        saveCurrent();
+        autoResize(ta);
+        return;
+      }
+
+      e.preventDefault();
+      let next;
+      if (num) {
+        next = indent + (parseInt(num) + 1) + '. ';
+      } else {
+        next = indent + bullet;
+      }
+      ta.value = val.slice(0, start) + '\n' + next + val.slice(start);
+      ta.selectionStart = ta.selectionEnd = start + 1 + next.length;
+      saveCurrent();
+      autoResize(ta);
+    }
+  }
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+renderSidebar();
+</script>
+</body>
+</html>
