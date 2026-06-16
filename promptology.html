@@ -448,6 +448,41 @@ body {
 .preview-file-list { color: var(--blue); }
 .preview-body { color: var(--text); }
 
+/* preview tabs */
+#preview-tabs { display: flex; gap: 2px; }
+.ptab {
+  background: none; border: none; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted2); padding: 3px 8px; border-radius: 3px;
+  transition: all 0.12s;
+}
+.ptab.active { background: var(--surface2); color: var(--acc); }
+.ptab:hover:not(.active) { color: var(--text); }
+
+/* ── BEST-PRACTICE BLOCK TOGGLES ── */
+.blocks-field .field-head { background: var(--surface2); }
+#blocks-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px; background: var(--bg);
+}
+.block-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--muted2);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; transition: all 0.12s;
+  user-select: none;
+}
+.block-toggle:hover { border-color: var(--border2); color: var(--text); }
+.block-toggle.on { background: var(--acc-dim); border-color: var(--acc); color: var(--acc); }
+.block-toggle .bt-box {
+  width: 11px; height: 11px; border-radius: 2px;
+  border: 1px solid var(--muted); display: grid; place-items: center;
+  font-size: 9px; line-height: 1; flex-shrink: 0;
+}
+.block-toggle.on .bt-box { background: var(--acc); border-color: var(--acc); color: #000; }
+
 /* ── EMPTY STATE ── */
 #empty {
   flex: 1; display: flex;
@@ -533,6 +568,14 @@ body {
           <option value="general">General</option>
           <option value="dev">Dev / Code</option>
         </optgroup>
+        <optgroup label="── Best-Practice (Anthropic) ──">
+          <option value="pe_general">PE — General Task</option>
+          <option value="pe_extract">PE — Structured Extract</option>
+          <option value="pe_longdoc">PE — Long Document</option>
+          <option value="pe_agentic">PE — Agentic Coding</option>
+          <option value="pe_research">PE — Research</option>
+          <option value="pe_role">PE — Role Assistant</option>
+        </optgroup>
         <optgroup label="── TradeSlayer ──">
           <option value="ts_signal">TS — Signal Engine</option>
           <option value="ts_ui">TS — Frontend Component</option>
@@ -567,8 +610,11 @@ body {
   <!-- PREVIEW -->
   <div id="preview-panel">
     <div id="preview-header">
-      <span>Output Preview</span>
-      <button id="preview-copy" onclick="copyPrompt()">Copy</button>
+      <div id="preview-tabs">
+        <button class="ptab active" id="ptab-prompt" onclick="setPreview('prompt')">Prompt</button>
+        <button class="ptab" id="ptab-eval" onclick="setPreview('eval')">Eval Stub</button>
+      </div>
+      <button id="preview-copy" onclick="copyPreview()">Copy</button>
     </div>
     <div id="preview-text"><span style="color:var(--surface3)">// output will appear here</span></div>
   </div>
@@ -673,6 +719,105 @@ const TEMPLATES = {
       { key:'scope',   label:'Scope',             hint:'what NOT to change',          hasFiles: false, placeholder:'Do not refactor. Fix only. Do not touch python/ files...' },
     ]
   },
+
+  // ── Anthropic best-practice templates (promptsmith) ──
+  // prefill = autofilled value on creation; blocks = best-practice blocks toggled ON by default;
+  // blockOptions = blocks offered as toggles; evalGrader = grader the Eval stub auto-selects.
+  pe_general: {
+    label: 'PE — General Task', isTask: false, evalGrader: 'llm',
+    blocks: [], blockOptions: ['self-check','no-preamble','avoid-markdown'],
+    fields: [
+      { key:'role',     label:'Role',          hint:'system: who Claude is (A·D1)',   hasFiles:false, placeholder:'a senior technical writer specializing in API docs' },
+      { key:'task',     label:'Task',          hint:'specific ask; request "above and beyond" (A1)', hasFiles:false, placeholder:'Write X. Go beyond the basics — include as many relevant details as useful.' },
+      { key:'context',  label:'Context / Why', hint:'motivation sharpens output (A2)', hasFiles:false, placeholder:'This will be read aloud by TTS, so ...' },
+      { key:'examples', label:'Examples',      hint:'3–5, wrapped in <example> (B1)',  hasFiles:false, placeholder:'<example>\ninput: ...\noutput: ...\n</example>' },
+      { key:'output',   label:'Output Format', hint:'say what TO do (A4/F1)',          hasFiles:false, placeholder:'Smoothly flowing prose paragraphs.', prefill:'Respond directly, without preamble.' },
+    ]
+  },
+  pe_extract: {
+    label: 'PE — Structured Extract', isTask: false, evalGrader: 'json',
+    blocks: ['no-preamble'], blockOptions: ['no-preamble','self-check'],
+    fields: [
+      { key:'input',  label:'Input',           hint:'text to process, in <input> (C1)', hasFiles:false, placeholder:'{{the text}}' },
+      { key:'fields', label:'Fields to Extract',hint:'keys + types',                    hasFiles:false, placeholder:'name (string), amount (number), date (ISO)' },
+      { key:'labels', label:'Labels (if class.)',hint:'enum of valid labels',           hasFiles:false, placeholder:'positive | negative | neutral | mixed' },
+      { key:'output', label:'Output Format',    hint:'use Structured Outputs, not prefill (F5)', hasFiles:false, placeholder:'', prefill:'Return strict JSON matching the schema above. Choose exactly one label. No prose.' },
+    ]
+  },
+  pe_longdoc: {
+    label: 'PE — Long Document', isTask: false, evalGrader: 'llm',
+    blocks: [], blockOptions: ['self-check'],
+    fields: [   // data FIRST, query LAST (E1)
+      { key:'documents',label:'Documents',     hint:'data at top, in <document> tags (E1/E2)', hasFiles:true, placeholder:'' },
+      { key:'paste',    label:'Or Paste Docs', hint:'inline document text',            hasFiles:false, placeholder:'<document index="1"><source>...</source><document_content>...</document_content></document>' },
+      { key:'question', label:'Question',       hint:'the actual task (asked last)',    hasFiles:false, placeholder:'Identify strategic advantages and recommend Q3 focus areas.' },
+      { key:'instructions',label:'Instructions',hint:'quote-ground first (E3)',         hasFiles:false, placeholder:'', prefill:'First, find quotes relevant to the question and put them in <quotes> tags. Then, using only those quotes, answer. Put the answer in <answer> tags.' },
+    ]
+  },
+  pe_agentic: {
+    label: 'PE — Agentic Coding', isTask: false, evalGrader: 'code',
+    blocks: ['investigate-first','no-overengineering','general-solution','cleanup-temp-files'],
+    blockOptions: ['investigate-first','no-overengineering','general-solution','cleanup-temp-files','autonomy-safety','parallel-tools','self-check'],
+    fields: [
+      { key:'env',   label:'Environment',     hint:'stack / harness',                  hasFiles:false, placeholder:'Claude Code, Python 3.12, FastAPI' },
+      { key:'files', label:'Files to Read',   hint:'exact paths (read before edit)',   hasFiles:true,  placeholder:'' },
+      { key:'task',  label:'Task',            hint:'EXPLICIT action ask, not "suggest" (G1)', hasFiles:false, placeholder:'Change this function to improve its performance.' },
+      { key:'rules', label:'Scope / Rules',   hint:'kept minimal by default (I2)',      hasFiles:false, placeholder:'', prefill:'Only change what is requested or clearly necessary. Don\'t touch unrelated code.' },
+    ]
+  },
+  pe_research: {
+    label: 'PE — Research', isTask: false, evalGrader: 'llm',
+    blocks: [], blockOptions: ['self-check','no-preamble'],
+    fields: [
+      { key:'question', label:'Research Question', hint:'what to find out',             hasFiles:false, placeholder:'What is the current state of X?' },
+      { key:'success',  label:'Success Criteria',  hint:'what a complete answer covers (I8)', hasFiles:false, placeholder:'A complete answer names ..., cites ..., and addresses ...' },
+      { key:'approach', label:'Approach',          hint:'verify + hypotheses (I8)',     hasFiles:false, placeholder:'', prefill:'Verify key facts across multiple independent sources. Track competing hypotheses and your confidence in each; self-critique before concluding.' },
+    ]
+  },
+  pe_role: {
+    label: 'PE — Role Assistant', isTask: false, evalGrader: 'llm',
+    blocks: [], blockOptions: ['avoid-markdown','no-preamble','self-check'],
+    fields: [
+      { key:'role',     label:'Role + Specialty', hint:'system prompt (D1)',           hasFiles:false, placeholder:'a patient customer-support agent for an e-commerce store' },
+      { key:'tone',     label:'Tone & Style',     hint:'how it should sound',          hasFiles:false, placeholder:'Empathetic, concise, never defensive.' },
+      { key:'behavior', label:'Behavior Rules',   hint:'do/avoid, escalation, limits', hasFiles:false, placeholder:'Always confirm the order number before acting. Escalate refunds over $200.' },
+      { key:'identity', label:'Identity (opt.)',  hint:'only if it must self-identify (D2)', hasFiles:false, placeholder:'The assistant is Claude, created by Anthropic. Current model: Claude Opus 4.8.' },
+    ]
+  },
+};
+
+// ─────────────────────────────────────────────
+// BEST-PRACTICE BLOCKS  (canned text injected into output when toggled on)
+// ─────────────────────────────────────────────
+const BLOCKS = {
+  'investigate-first': { label:'investigate-first', text:
+'<investigate_before_answering>\nNever speculate about code you have not opened. If the user references a specific file, read it before answering. Investigate relevant files BEFORE making any claim about the codebase. Give grounded, hallucination-free answers.\n</investigate_before_answering>' },
+  'no-overengineering': { label:'no-overengineering', text:
+'Avoid over-engineering. Only make changes that are directly requested or clearly necessary. Don\'t add features, refactors, docs, defensive code, or abstractions beyond the task. The right amount of complexity is the minimum needed.' },
+  'general-solution': { label:'general-solution', text:
+'Write a high-quality, general-purpose solution using standard tools. Don\'t hard-code to specific test inputs; implement logic that works for all valid inputs. Tests verify correctness — they don\'t define the solution. If a task is infeasible or a test is wrong, say so rather than working around it.' },
+  'autonomy-safety': { label:'autonomy-safety', text:
+'Take local, reversible actions freely (editing files, running tests), but for actions that are hard to reverse, affect shared systems, or are destructive (deleting files/branches, dropping tables, rm -rf, git push --force, posting to PRs/issues), ask before proceeding. Never use destructive shortcuts like --no-verify.' },
+  'cleanup-temp-files': { label:'cleanup-temp-files', text:
+'If you create any temporary files, scripts, or helper files for iteration, remove them at the end of the task.' },
+  'parallel-tools': { label:'parallel-tools', text:
+'<use_parallel_tool_calls>\nIf you intend to call multiple tools with no dependencies between them, make all the independent calls in parallel. If a call depends on a previous result, call them sequentially. Never use placeholders or guess missing parameters.\n</use_parallel_tool_calls>' },
+  'proactive-action': { label:'proactive-action', text:
+'<default_to_action>\nBy default, implement changes rather than only suggesting them. If intent is unclear, infer the most useful likely action and proceed, using tools to discover missing details instead of guessing.\n</default_to_action>' },
+  'conservative-action': { label:'conservative-action', text:
+'<do_not_act_before_instructions>\nDo not change files unless clearly instructed. When intent is ambiguous, default to information, research, and recommendations rather than action.\n</do_not_act_before_instructions>' },
+  'self-check': { label:'self-check', text:
+'Before you finish, verify your answer against the success criteria / constraints above.' },
+  'avoid-markdown': { label:'avoid-markdown', text:
+'<avoid_excessive_markdown>\nWrite in clear flowing prose using complete paragraphs. Reserve markdown for inline code, code blocks, and simple headings. Don\'t use bold/italics or bullet/numbered lists unless presenting truly discrete items or asked for a list.\n</avoid_excessive_markdown>' },
+  'no-preamble': { label:'no-preamble', text:
+'Respond directly without preamble. Do not start with phrases like "Here is..." or "Based on...".' },
+  'subagent-guidance': { label:'subagent-guidance', text:
+'Use subagents when tasks run in parallel, need isolated context, or are independent workstreams. For simple, sequential, or single-file work, work directly rather than delegating.' },
+  'context-persistence': { label:'context-persistence', text:
+'Your context window is compacted automatically as it fills, so continue indefinitely. Don\'t stop early for token-budget reasons; save progress/state to memory as you near the limit and complete the task fully.' },
+  'commit-to-approach': { label:'commit-to-approach', text:
+'Choose an approach and commit. Don\'t revisit decisions unless new information directly contradicts your reasoning; you can course-correct later if it fails.' },
 };
 
 // ─────────────────────────────────────────────
@@ -681,7 +826,18 @@ const TEMPLATES = {
 let items = JSON.parse(localStorage.getItem('ts_pm_items') || '{}');
 let activeId = null;
 let currentMode = 'prompt';
+let previewMode = 'prompt'; // 'prompt' | 'eval'
 let baseDir = localStorage.getItem('ts_pm_basedir') || '~/projects/tradeslayer';
+
+// Autofill: seed empty fields with template prefills + default best-practice blocks.
+function applyTemplateDefaults(item, { resetBlocks = false } = {}) {
+  const tpl = TEMPLATES[item.template];
+  if (!tpl) return;
+  (tpl.fields || []).forEach(f => {
+    if (f.prefill && !(item.fields[f.key] || '').trim()) item.fields[f.key] = f.prefill;
+  });
+  if (resetBlocks || !Array.isArray(item.blocks)) item.blocks = [...(tpl.blocks || [])];
+}
 
 document.getElementById('basedir-input').value = baseDir;
 document.getElementById('basedir-input').addEventListener('input', e => {
@@ -719,7 +875,8 @@ function setMode(m) {
 function newItem() {
   const id = genId();
   const tpl = currentMode === 'task' ? 'claude_code' : 'promptology';
-  items[id] = { id, name:'', template: tpl, mode: currentMode, status:'ready', created: Date.now(), fields:{}, files:{} };
+  items[id] = { id, name:'', template: tpl, mode: currentMode, status:'ready', created: Date.now(), fields:{}, files:{}, blocks:[] };
+  applyTemplateDefaults(items[id], { resetBlocks: true });
   save();
   loadItem(id);
 }
@@ -771,6 +928,7 @@ function changeTemplate() {
   const tplDef = TEMPLATES[tpl];
   const statusSel = document.getElementById('status-select');
   statusSel.style.display = (tplDef && tplDef.isTask) ? 'block' : 'none';
+  applyTemplateDefaults(items[activeId], { resetBlocks: true }); // autofill prefills + default blocks for new template
   save();
   renderFields(activeId);
 }
@@ -852,6 +1010,41 @@ function renderFields(id) {
     setTimeout(() => autoResize(ta), 0);
   });
 
+  // Best-practice block toggles (only for templates that offer them)
+  if (Array.isArray(tpl.blockOptions) && tpl.blockOptions.length) {
+    if (!Array.isArray(item.blocks)) item.blocks = [];
+    const bf = document.createElement('div');
+    bf.className = 'field blocks-field';
+    bf.innerHTML = `
+      <div class="field-head">
+        <div class="field-num">✓</div>
+        <div class="field-name">Best-Practice Blocks</div>
+        <div class="field-hint">click to include canned rules</div>
+      </div>`;
+    const row = document.createElement('div');
+    row.id = 'blocks-row';
+    tpl.blockOptions.forEach(key => {
+      const blk = BLOCKS[key];
+      if (!blk) return;
+      const on = item.blocks.includes(key);
+      const tog = document.createElement('div');
+      tog.className = 'block-toggle' + (on ? ' on' : '');
+      tog.title = blk.text;
+      tog.innerHTML = `<span class="bt-box">${on ? '✓' : ''}</span><span>${escHtml(blk.label)}</span>`;
+      tog.onclick = () => {
+        const i = item.blocks.indexOf(key);
+        if (i >= 0) item.blocks.splice(i, 1); else item.blocks.push(key);
+        const nowOn = item.blocks.includes(key);
+        tog.classList.toggle('on', nowOn);
+        tog.querySelector('.bt-box').textContent = nowOn ? '✓' : '';
+        save(); updateCharCount(); updatePreview();
+      };
+      row.appendChild(tog);
+    });
+    bf.appendChild(row);
+    fc.appendChild(bf);
+  }
+
   updateCharCount();
   updatePreview();
 }
@@ -915,9 +1108,9 @@ function save() { localStorage.setItem('ts_pm_items', JSON.stringify(items)); }
 // ─────────────────────────────────────────────
 // BUILD OUTPUT
 // ─────────────────────────────────────────────
-function buildOutput() {
-  if (!activeId) return '';
-  const item = items[activeId];
+function buildOutput(itemArg) {
+  const item = itemArg || (activeId ? items[activeId] : null);
+  if (!item) return '';
   const tpl = TEMPLATES[item.template] || TEMPLATES.promptology;
   const lines = [];
 
@@ -963,29 +1156,153 @@ function buildOutput() {
     lines.push('');
   });
 
+  // Best-practice blocks (toggled on) → Guidelines section
+  const blockKeys = (item.blocks || []).filter(k => BLOCKS[k]);
+  if (blockKeys.length) {
+    lines.push('# Guidelines');
+    blockKeys.forEach(k => { lines.push(BLOCKS[k].text); lines.push(''); });
+  }
+
   return lines.join('\n').trim();
 }
 
 // ─────────────────────────────────────────────
 // PREVIEW
 // ─────────────────────────────────────────────
+function setPreview(m) {
+  previewMode = m;
+  document.getElementById('ptab-prompt').classList.toggle('active', m === 'prompt');
+  document.getElementById('ptab-eval').classList.toggle('active', m === 'eval');
+  updatePreview();
+}
+
+function copyPreview() {
+  if (previewMode === 'eval') {
+    if (!activeId) return;
+    navigator.clipboard.writeText(generateEval(items[activeId])).then(() => toast('Eval stub copied'));
+  } else {
+    copyPrompt();
+  }
+}
+
 function updatePreview() {
-  const text = buildOutput();
   const el = document.getElementById('preview-text');
+
+  if (previewMode === 'eval') {
+    if (!activeId) { el.innerHTML = '<span style="color:var(--surface3)">// select a prompt to generate an eval</span>'; return; }
+    const md = generateEval(items[activeId]);
+    el.innerHTML = escHtml(md)
+      .replace(/^(# .*)$/gm, '<span class="preview-section-head">$1</span>')
+      .replace(/^(```.*)$/gm, '<span style="color:var(--muted)">$1</span>');
+    return;
+  }
+
+  const text = buildOutput();
   if (!text) {
     el.innerHTML = '<span style="color:var(--surface3)">// output will appear here</span>';
     return;
   }
-
-  // Syntax highlight the preview
   let html = escHtml(text)
     .replace(/^(## \[.*?\].*)/gm, '<span class="preview-section-head">$1</span>')
     .replace(/^(# [A-Z].*)/gm, '<span class="preview-section-head">$1</span>')
     .replace(/^(- ~.*|- \/.*)/gm, '<span class="preview-file-list">$1</span>')
     .replace(/^(Status: .*)$/gm, '<span style="color:var(--muted2)">$1</span>')
     .replace(/^(Depends on: .*)$/gm, '<span style="color:var(--muted2)">$1</span>');
-
   el.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// EVAL STUB GENERATOR (grounded in test-and-evaluate/develop-tests)
+// Auto-selects grader from template.evalGrader; emits criteria + seed cases + eval_harness.py
+// ─────────────────────────────────────────────
+function generateEval(item) {
+  const tpl = TEMPLATES[item.template] || {};
+  const grader = tpl.evalGrader || 'llm';          // 'json' | 'exact' | 'code' | 'llm'
+  const sys = buildOutput(item).replace(/"""/g, "'''");
+  const name = (item.name || tpl.label || 'prompt');
+
+  // Success criteria (S·M·A·R) + seed cases + grader func, per grader type
+  let criteria, cases, graderFn, graderName, pass;
+  if (grader === 'json' || grader === 'exact') {
+    criteria = `- Output is 100% valid & matches the expected shape (E-S1)\n- Accuracy >= {{0.90}} on the seed set (E-S2 — set your threshold)\n- 0 spurious fields / hallucinated labels (E-S4)`;
+    cases = [
+      `{"input": "{{typical input 1}}",       "expected": "{{answer}}"},`,
+      `{"input": "{{typical input 2}}",       "expected": "{{answer}}"},`,
+      `{"input": "",                          "expected": "{{answer}}"},   # edge: empty input`,
+      `{"input": "{{very long input}}",       "expected": "{{answer}}"},   # edge: length`,
+      `{"input": "{{ambiguous / borderline}}","expected": "{{answer}}"},   # edge: humans disagree`,
+    ];
+    graderName = grader === 'json' ? 'grade_json' : 'grade_exact';
+    graderFn = grader === 'json'
+      ? `def grade_json(out, case):            # E-G1 code: valid JSON w/ required keys\n    import json\n    try: obj = json.loads(out)\n    except json.JSONDecodeError: return False\n    return all(k in obj for k in case.get("required_keys", []))`
+      : `def grade_exact(out, case):           # E-G1 code: exact match (categorical)\n    return out.strip().lower() == case["expected"].strip().lower()`;
+    pass = `v is True`;
+  } else if (grader === 'code') {
+    criteria = `- All listed tests pass (E-G1 code-based)\n- Solution is general, not hard-coded to tests (principle I3)\n- No edits outside the declared scope (I2)`;
+    cases = [
+      `{"input": "{{run: pytest -q}}",        "expected": "all pass"},`,
+      `{"input": "{{run: ruff / typecheck}}", "expected": "clean"},`,
+      `{"input": "{{edge: empty / malformed input}}", "expected": "handled, no crash"},  # edge`,
+      `{"input": "{{edge: boundary value}}",  "expected": "correct"},                    # edge`,
+    ];
+    graderName = 'grade_code';
+    graderFn = `def grade_code(out, case):            # E-G1 code: wire to your test runner\n    # e.g. subprocess.run(["pytest","-q"]).returncode == 0\n    return "{{assert}}" in out`;
+    pass = `v is True`;
+  } else {
+    criteria = `- Judge rates >= {{4}}/5 (or 'correct') vs the rubric (E-G3)\n- >= {{0.90}} of the seed set passes (E-S2 — set threshold)\n- Hard constraints (length/sections) also pass a cheap code check`;
+    cases = [
+      `{"input": "{{typical input 1}}",        "rubric": "{{what a good answer must contain}}"},`,
+      `{"input": "{{typical input 2}}",        "rubric": "{{...}}"},`,
+      `{"input": "",                           "rubric": "{{handles empty input gracefully}}"},   # edge`,
+      `{"input": "{{very long / multi-topic}}","rubric": "{{stays on task}}"},                    # edge`,
+      `{"input": "{{adversarial / off-topic}}","rubric": "{{refuses or redirects}}"},             # edge`,
+    ];
+    graderName = 'grade_llm';
+    graderFn = `def grade_llm(out, case):             # E-G3 LLM-as-judge: reason then verdict\n    p = (f"Grade the answer against the rubric.\\n<rubric>{case['rubric']}</rubric>\\n"\n         f"<answer>{out}</answer>\\nThink in <thinking> tags, then output exactly "\n         f"'correct' or 'incorrect' in <result> tags.")\n    v = client.messages.create(model=GRADER_MODEL, max_tokens=1024,\n            messages=[{"role":"user","content":p}]).content[0].text.lower()\n    return "<result>correct</result>" in v`;
+    pass = `v is True`;
+  }
+
+  const py =
+`"""Eval stub for: ${name}
+Auto-generated by promptology. Grader: ${graderName} (template '${item.template}').
+  pip install anthropic ; export ANTHROPIC_API_KEY=... ; python eval_${(item.template)}.py
+"""
+import anthropic
+client = anthropic.Anthropic()
+
+CANDIDATE_MODEL = "claude-opus-4-8"
+GRADER_MODEL    = "claude-opus-4-8"   # E-G3.4: prefer a separate grader
+
+SYSTEM_PROMPT = """${sys}"""
+
+# E-D1: typical + labeled edge cases.  E-D3: seed — expand to dozens (ask Claude).
+TEST_CASES = [
+    ${cases.join('\n    ')}
+]
+
+${graderFn}
+
+def get_completion(test_input):
+    return client.messages.create(
+        model=CANDIDATE_MODEL, max_tokens=1024, system=SYSTEM_PROMPT,
+        messages=[{"role":"user","content":str(test_input)}],
+    ).content[0].text
+
+def main():
+    ok = 0
+    for case in TEST_CASES:
+        out = get_completion(case["input"])
+        v = ${graderName}(out, case)
+        passed = ${pass}
+        ok += passed
+        print(("PASS" if passed else "FAIL"), repr(str(case["input"])[:48]))
+    print(f"\\nScore: {ok/len(TEST_CASES)*100:.1f}%  ({ok}/{len(TEST_CASES)})")
+
+if __name__ == "__main__":
+    main()
+`;
+
+  return `# Eval stub — ${name}\n# grader: ${graderName} (auto-selected from template)\n\n# Success criteria (S·M·A·R)\n${criteria}\n\n# Runnable harness (eval_${item.template}.py)\n\`\`\`python\n${py}\`\`\`\n`;
 }
 
 function updateCharCount() {
