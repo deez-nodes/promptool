@@ -757,7 +757,7 @@ const TEMPLATES = {
   pe_agentic: {
     label: 'PE — Agentic Coding', isTask: false, evalGrader: 'code',
     blocks: ['investigate-first','no-overengineering','general-solution','cleanup-temp-files'],
-    blockOptions: ['investigate-first','no-overengineering','general-solution','cleanup-temp-files','autonomy-safety','parallel-tools','self-check'],
+    blockOptions: ['investigate-first','no-overengineering','general-solution','cleanup-temp-files','autonomy-safety','conservative-action','parallel-tools','self-check'],
     fields: [
       { key:'env',   label:'Environment',     hint:'stack / harness',                  hasFiles:false, placeholder:'Claude Code, Python 3.12, FastAPI' },
       { key:'files', label:'Files to Read',   hint:'exact paths (read before edit)',   hasFiles:true,  placeholder:'' },
