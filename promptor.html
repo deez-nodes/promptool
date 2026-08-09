@@ -171,23 +171,8 @@ body{
 #toast.show{opacity:1; transform:translateY(0);}
 ::-webkit-scrollbar{width:5px; height:5px;} ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2); border-radius:3px;} ::-webkit-scrollbar-thumb:hover{background:var(--miku);}
-/* ── bridge: run controls + status dot ── */
-#run-select-model,#run-select-effort{background:var(--surface2); color:var(--text); border:1px solid var(--border2); border-radius:5px; padding:6px 8px; font-family:'JetBrains Mono'; font-size:11px; cursor:pointer;}
-#run-select-model:disabled,#run-select-effort:disabled{opacity:.4; cursor:not-allowed;}
-.btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:none;}
-#bridge-dot{font-size:13px; color:var(--pink); margin-left:2px; transition:.2s; cursor:default;}
-#bridge-dot.up{color:var(--miku); text-shadow:var(--glow-miku);}
-/* ── chat panel ── */
-#chat-panel{flex:1; display:flex; flex-direction:column; min-height:0;}
-#chat-thread{flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px;}
-.cmsg{font-size:12px; line-height:1.7; padding:9px 12px; border-radius:7px; white-space:pre-wrap; word-break:break-word; max-width:92%;}
-.cmsg.you{align-self:flex-end; background:var(--acid-deep); color:var(--acid); border:1px solid var(--acid-dim);}
-.cmsg.bot{align-self:flex-start; background:var(--surface2); color:var(--text); border:1px solid var(--border);}
-.cmsg.sys{align-self:center; background:none; color:var(--muted); font-size:10px; letter-spacing:.08em; text-transform:uppercase; padding:2px;}
-.cmsg.cost{align-self:flex-start; background:none; color:var(--muted); font-size:10px; padding:0 4px;}
-#chat-inputrow{display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); background:var(--surface);}
-#chat-input{flex:1; background:var(--bg); color:var(--text); border:1px solid var(--border2); border-radius:5px; padding:9px 11px; font-family:'JetBrains Mono'; font-size:12px; resize:none; outline:none; max-height:120px;}
-#chat-input:focus{border-color:var(--miku);}
+/* ── char count ── */
+#char-count{font-size:11px; color:var(--muted); letter-spacing:.06em; white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -229,6 +214,12 @@ body{
           <option value="pe_research">PE — Research</option>
           <option value="pe_role">PE — Role Assistant</option>
         </optgroup>
+        <optgroup label="── TradeSlayer ──">
+          <option value="ts_signal">TS — Signal Engine</option>
+          <option value="ts_ui">TS — Frontend Component</option>
+          <option value="ts_schema">TS — Schema / DB</option>
+          <option value="ts_debug">TS — Debug Session</option>
+        </optgroup>
         <optgroup label="── Tasks ──">
           <option value="claude_code">Claude Code Task</option>
         </optgroup>
@@ -240,17 +231,10 @@ body{
     </div>
     <div id="fields-wrap" style="display:none"></div>
     <div id="actions" style="display:none">
-      <button class="btn btn-primary" onclick="copyPreview()">Copy</button>
+      <button class="btn btn-primary" onclick="copyPrompt()">Copy</button>
       <button class="btn btn-secondary" onclick="saveMd()">Save</button>
-      <button class="btn btn-secondary" id="btn-optimize" onclick="optimizeViaBridge()" title="Optimize this draft in the live session" disabled>✦ Optimize</button>
-      <button class="btn btn-secondary" id="btn-run" onclick="runViaBridge()" title="Run this draft in the live session" disabled>▶ Run</button>
-      <select id="run-select-model" onchange="onRunCfgChange()" title="Engine model (restarts session)" disabled>
-        <option value="sonnet">sonnet</option><option value="opus">opus</option><option value="fable">fable</option>
-      </select>
-      <select id="run-select-effort" onchange="onRunCfgChange()" title="Engine effort (restarts session)" disabled>
-        <option value="low">low</option><option value="medium" selected>medium</option><option value="high">high</option>
-      </select>
-      <span id="bridge-dot" title="Bridge offline — open via bridge.js to run">●</span>
+      <button class="btn btn-secondary" onclick="copyRaw()" title="Copy the built prompt as raw text">Copy Raw</button>
+      <span id="char-count">0 chars</span>
       <div class="seg acid" id="fmt-seg" title="Output format">
         <button id="fmt-xml" class="on" onclick="setFmt('xml')">&lt;XML&gt;</button>
         <button id="fmt-md" onclick="setFmt('md')">MD</button>
@@ -277,18 +261,10 @@ body{
       <div id="preview-tabs">
         <button class="ptab active" id="ptab-prompt" onclick="setPreview('prompt')">Prompt</button>
         <button class="ptab" id="ptab-eval" onclick="setPreview('eval')">Eval Stub</button>
-        <button class="ptab" id="ptab-chat" onclick="setPreview('chat')">Chat</button>
       </div>
       <button class="ptab" onclick="copyPreview()" style="color:var(--miku)">Copy ⧉</button>
     </div>
     <div id="preview-text"><span style="color:var(--surface3)">// output appears here</span></div>
-    <div id="chat-panel" style="display:none">
-      <div id="chat-thread"><div class="cmsg sys">start the bridge, then Optimize ✦ or Run ▶</div></div>
-      <div id="chat-inputrow">
-        <textarea id="chat-input" rows="1" placeholder="message the session… (Enter to send)" disabled></textarea>
-        <button class="btn btn-primary" id="chat-send" onclick="chatSend()" disabled>Send</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -329,6 +305,41 @@ const TEMPLATES = {
       {key:'state',label:'Reference Code',hint:'raw code',hasFiles:false,placeholder:'Paste existing code here...'},
       {key:'task',label:'Specific Task',hint:'the active imperative ask',hasFiles:false,placeholder:'Refactor this function for...'},
       {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'Keep architecture minimalist...'},
+    ]},
+  // ── TradeSlayer project templates (from promptology) ──
+  ts_signal:{label:'TS — Signal Engine',isTask:false,
+    fields:[
+      {key:'signal',label:'Signal / Module',hint:'which signal are we building',hasFiles:false,placeholder:'e.g. regime.py — HTF regime classifier'},
+      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
+      {key:'inputs',label:'Inputs',hint:'data sources & types',hasFiles:false,placeholder:'Schwab timesale_futures stream. Fields: price, size, bid, ask...'},
+      {key:'outputs',label:'Outputs / Events',hint:'what this emits',hasFiles:false,placeholder:'Emits regime: DISTRIBUTION | ACCUMULATION | RANGE | LIQUIDATION | TREND_UP | TREND_DOWN'},
+      {key:'math',label:'Math / Algorithm',hint:'approach to implement',hasFiles:false,placeholder:'HMM with 6 states. Kalman filter for trend estimation...'},
+      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'No blocking calls. Full type hints. Do not touch trade logging...'},
+    ]},
+  ts_ui:{label:'TS — Frontend Component',isTask:false,
+    fields:[
+      {key:'component',label:'Component',hint:'name + route',hasFiles:false,placeholder:'RegimeBanner.vue — persistent top bar on all pages'},
+      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
+      {key:'data',label:'Data / Props',hint:'what it consumes',hasFiles:false,placeholder:'useRegime composable. Expects: { regime: string, flags: string[] }'},
+      {key:'behavior',label:'Behavior',hint:'interactions & state',hasFiles:false,placeholder:'Updates every SSE regime event. Color shifts by regime type. Flags shown as dismissible chips...'},
+      {key:'layout',label:'Layout Notes',hint:'structure, not style',hasFiles:false,placeholder:'Fixed top bar. Regime label left. Flags right. No styling beyond layout Tailwind...'},
+      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'Stock Tailwind only — no custom CSS yet. TypeScript strict. No hardcoded data...'},
+    ]},
+  ts_schema:{label:'TS — Schema / DB',isTask:false,
+    fields:[
+      {key:'table',label:'Table / Schema',hint:'what we are defining',hasFiles:false,placeholder:'rule_checks — junction between trades and rules with confidence level'},
+      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
+      {key:'fields',label:'Fields',hint:'columns + types',hasFiles:false,placeholder:'id TEXT PK, trade_id TEXT FK, rule_id TEXT FK, confidence TEXT (none|weak|moderate|strong)'},
+      {key:'queries',label:'Required Queries',hint:'what needs to be queryable',hasFiles:false,placeholder:'Win rate by rule_id. Avg confidence for winning trades. Rules skipped per session...'},
+      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'DuckDB syntax. Full type hints on all query functions. No raw string SQL in routes...'},
+    ]},
+  ts_debug:{label:'TS — Debug Session',isTask:false,
+    fields:[
+      {key:'symptom',label:'Symptom',hint:'what is broken / wrong',hasFiles:false,placeholder:'useTradeLog composable returns empty array after POST succeeds'},
+      {key:'files',label:'Relevant Files',hint:'exact paths',hasFiles:true,placeholder:''},
+      {key:'error',label:'Error / Output',hint:'paste exact error or log',hasFiles:false,placeholder:'Paste stack trace, console output, or unexpected value...'},
+      {key:'tried',label:'Already Tried',hint:'what you have attempted',hasFiles:false,placeholder:'Confirmed POST returns 201. Checked network tab — GET /trades returns correct data...'},
+      {key:'scope',label:'Scope',hint:'what NOT to change',hasFiles:false,placeholder:'Do not refactor. Fix only. Do not touch python/ files...'},
     ]},
   claude_code:{label:'Claude Code Task',isTask:true,
     fields:[
@@ -399,6 +410,42 @@ const BLOCKS = {
   'no-preamble':{label:'no-preamble',text:'Respond directly without preamble. Do not start with phrases like "Here is..." or "Based on...".'},
 };
 
+// ═══════════════ MIGRATION: promptology (ts_pm_*) → promptor (promptor_*) ═══════════════
+// One-time, purely additive merge by id. promptor_items is never replaced wholesale and
+// always wins on an id collision. ts_pm_items is deliberately left in place so
+// promptology.html keeps working. A done-flag keeps it idempotent, so an item deleted in
+// prompTOR after the merge is not resurrected on the next load.
+function migrateFromPromptology(){
+  const FLAG='promptor_migrated_ts_pm';
+  if(localStorage.getItem(FLAG)==='1') return;
+  const raw=localStorage.getItem('ts_pm_items');
+  // Nothing to migrate YET — do not burn the one-shot. promptology.html still ships, so a
+  // user can reach prompTOR first and create legacy items afterwards; consuming the flag
+  // here would strand that data permanently.
+  if(raw===null) return;
+  let legacy,mine;
+  try{ legacy=JSON.parse(raw); }catch(_){ return; }              // malformed: leave both, retry next load
+  try{ mine=JSON.parse(localStorage.getItem('promptor_items')||'{}'); }catch(_){ return; }
+  if(!legacy||typeof legacy!=='object'||Array.isArray(legacy)){ localStorage.setItem(FLAG,'1'); return; }
+  if(!mine||typeof mine!=='object'||Array.isArray(mine)) return; // do not clobber unreadable promptor data
+  let added=0;
+  Object.keys(legacy).forEach(id=>{
+    const it=legacy[id];
+    if(!it||typeof it!=='object') return;
+    if(Object.prototype.hasOwnProperty.call(mine,id)) return;    // id in both → keep prompTOR's
+    mine[id]={...it, id:it.id||id, mode:it.mode||'prompt', fields:it.fields||{}, files:it.files||{},
+              blocks:Array.isArray(it.blocks)?it.blocks:[], created:it.created||Date.now()};
+    added++;
+  });
+  if(added) localStorage.setItem('promptor_items',JSON.stringify(mine));
+  if(localStorage.getItem('promptor_basedir')===null){           // adopt base dir only if unset
+    const bd=localStorage.getItem('ts_pm_basedir');
+    if(bd!==null) localStorage.setItem('promptor_basedir',bd);
+  }
+  localStorage.setItem(FLAG,'1');
+}
+try{ migrateFromPromptology(); }catch(_){}                       // never let a storage error brick boot
+
 // ═══════════════ STATE ═══════════════
 let items = JSON.parse(localStorage.getItem('promptor_items') || '{}');
 let activeId=null, currentMode='prompt', previewMode='prompt';
@@ -464,7 +511,7 @@ function renderFields(id){
   const fc=document.getElementById('fields-wrap'); fc.innerHTML='';
   tpl.fields.forEach((f,i)=>{
     const block=document.createElement('div'); block.className='field';
-    const tagName = item.template.startsWith('pe_')||['promptology','general','dev'].includes(item.template) ? slug(f.label) : null;
+    const tagName = item.template.startsWith('pe_')||item.template.startsWith('ts_')||['promptology','general','dev'].includes(item.template) ? slug(f.label) : null;
     const head=document.createElement('div'); head.className='field-head';
     head.innerHTML=`<div class="field-num">${i+1}</div>`+
       (tagName?`<div class="field-tag"><span class="ang">&lt;</span>${tagName}<span class="ang">&gt;</span></div>`:'')+
@@ -564,17 +611,26 @@ function setFmt(f){ outputFmt=f; localStorage.setItem('promptor_fmt',f);
 function setPreview(m){ previewMode=m;
   document.getElementById('ptab-prompt').classList.toggle('active',m==='prompt');
   document.getElementById('ptab-eval').classList.toggle('active',m==='eval');
-  document.getElementById('ptab-chat').classList.toggle('active',m==='chat');
-  const chat=m==='chat';
-  document.getElementById('chat-panel').style.display=chat?'flex':'none';
-  document.getElementById('preview-text').style.display=chat?'none':'block';
-  if(!chat) updatePreview(); }
+  updatePreview(); }
 function copyPreview(){
   if(previewMode==='eval'){ if(!activeId)return; navigator.clipboard.writeText(generateEval(items[activeId])).then(()=>toast('Eval stub copied')); }
-  else { saveCurrent(); navigator.clipboard.writeText(buildOutput()).then(()=>toast('Prompt copied')); }
+  else { copyPrompt(); }
+}
+function copyPrompt(){
+  saveCurrent();
+  const text = buildOutput();
+  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard'));
+}
+function copyRaw(){
+  saveCurrent();
+  navigator.clipboard.writeText(buildOutput()).then(() => toast('Raw copied'));
+}
+function updateCharCount(){
+  document.getElementById('char-count').textContent = buildOutput().length + ' chars';
 }
 function updatePreview(){
   const el=document.getElementById('preview-text');
+  updateCharCount();
   if(previewMode==='eval'){
     if(!activeId){el.innerHTML='<span style="color:var(--surface3)">// select a prompt to generate an eval</span>';return;}
     el.innerHTML=escHtml(generateEval(items[activeId]))
@@ -791,47 +847,6 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // global Esc closes modal
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('modal-bg').classList.contains('show')){toggleCheat();} });
 
-// ═══════════════ BRIDGE (one live claude session, piped) ═══════════════
-const BRIDGE_TOKEN = window.__PROMPTOR_TOKEN__ || null;   // present only when served by bridge.js
-let bridgeUp=false, bridgeES=null;
-const curModel=()=>document.getElementById('run-select-model').value;
-const curEffort=()=>document.getElementById('run-select-effort').value;
-function bridgePost(path,body){ return fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-promptor-token':BRIDGE_TOKEN},body:JSON.stringify(body||{})}); }
-function setBridgeEnabled(on){ bridgeUp=on;
-  const dot=document.getElementById('bridge-dot'); dot.classList.toggle('up',on);
-  dot.title=on?'Bridge online — live session':'Bridge offline — open via bridge.js to run';
-  ['btn-optimize','btn-run','run-select-model','run-select-effort','chat-input','chat-send'].forEach(id=>{const el=document.getElementById(id); if(el)el.disabled=!on;}); }
-function cmsg(role,text){ const t=document.getElementById('chat-thread'); const d=document.createElement('div');
-  d.className='cmsg '+role; d.textContent=text; t.appendChild(d); t.scrollTop=t.scrollHeight; return d; }
-function handleEvent(evt){
-  if(evt.type==='system'&&evt.subtype==='init'){ if(evt.model){ const ms=document.getElementById('run-select-model');
-      const alias=evt.model.includes('opus')?'opus':evt.model.includes('fable')?'fable':'sonnet';
-      if([...ms.options].some(o=>o.value===alias))ms.value=alias; } return; }
-  if(evt.type==='assistant'&&evt.message&&Array.isArray(evt.message.content)){
-    const txt=evt.message.content.filter(c=>c.type==='text').map(c=>c.text).join(''); if(txt)cmsg('bot',txt); return; }
-  if(evt.type==='result'){ const c=evt.total_cost_usd?` · $${evt.total_cost_usd.toFixed(4)}`:'';
-    cmsg('cost',`— ${evt.subtype||'done'}${c} · ${curModel()}/${curEffort()}`); return; }
-  if(evt.type==='system'&&evt.subtype==='engine_exit'){ cmsg('sys',`engine exited (code ${evt.code})`); setBridgeEnabled(false); } }
-function openStream(){ if(bridgeES)bridgeES.close();
-  bridgeES=new EventSource('/stream?t='+encodeURIComponent(BRIDGE_TOKEN));
-  bridgeES.onmessage=e=>{ try{ handleEvent(JSON.parse(e.data)); }catch(_){} }; }
-async function initBridge(){ if(!BRIDGE_TOKEN){ setBridgeEnabled(false); return; }
-  try{ const r=await fetch('/health'); if(!r.ok)throw 0; const h=await r.json();
-    if(h&&h.ok){ setBridgeEnabled(true);
-      if(h.effort){ const es=document.getElementById('run-select-effort'); if([...es.options].some(o=>o.value===h.effort))es.value=h.effort; }
-      openStream(); } else setBridgeEnabled(false);
-  }catch(_){ setBridgeEnabled(false); } }
-function optimizeViaBridge(){ if(!bridgeUp)return; saveCurrent(); const draft=buildOutput(); if(!draft){toast('Nothing to optimize');return;}
-  setPreview('chat'); cmsg('you','✦ optimize this draft');
-  bridgePost('/send',{text:'/promptor optimize this draft. Show the optimized prompt labeled SYSTEM: and USER: with XML-tagged sections, then a short "why, by rule ID" list.\n\n'+draft}).catch(()=>cmsg('sys','send failed')); }
-function runViaBridge(){ if(!bridgeUp)return; saveCurrent(); const draft=buildOutput(); if(!draft){toast('Nothing to run');return;}
-  setPreview('chat'); cmsg('you','▶ run this draft');
-  bridgePost('/send',{text:'Run this prompt as a fresh task and show the result under a "--- RUN OUTPUT ---" line:\n\n'+draft}).catch(()=>cmsg('sys','send failed')); }
-function chatSend(){ if(!bridgeUp)return; const el=document.getElementById('chat-input'); const text=el.value.trim(); if(!text)return;
-  cmsg('you',text); el.value=''; el.style.height='auto'; bridgePost('/send',{text}).catch(()=>cmsg('sys','send failed')); }
-function onRunCfgChange(){ if(!bridgeUp)return; const model=curModel(),effort=curEffort();
-  cmsg('sys',`restarting session → ${model} / ${effort}`); bridgePost('/restart',{model,effort}).catch(()=>cmsg('sys','restart failed')); }
-
 // ═══════════════ INIT ═══════════════
 buildCheat();
 setFmt(outputFmt);
@@ -839,11 +854,6 @@ document.getElementById('vim-on').classList.toggle('on',vimOn);
 document.getElementById('vim-off').classList.toggle('on',!vimOn);
 setVimMode(vimOn?'insert':'off',null);
 renderSidebar();
-// chat input: Enter sends, Shift+Enter newline; autosize
-(()=>{ const ci=document.getElementById('chat-input'); if(!ci)return;
-  ci.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); chatSend(); } });
-  ci.addEventListener('input',()=>{ ci.style.height='auto'; ci.style.height=Math.min(120,ci.scrollHeight)+'px'; }); })();
-initBridge();
 </script>
 </body>
 </html>
