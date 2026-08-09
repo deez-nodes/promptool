@@ -22,9 +22,10 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-// Defaults to ../promptor.html. An explicit path may be passed so the harness can
-// be pointed at a copy (used to mutation-test the checks themselves).
-const TARGET = path.resolve(process.argv[2] || process.env.PROMPTOR_HTML || path.join(ROOT, 'promptor.html'));
+// Defaults to ../index.html (renamed from promptor.html so GitHub Pages has an
+// entry point at /). An explicit path may be passed so the harness can be
+// pointed at a copy (used to mutation-test the checks themselves).
+const TARGET = path.resolve(process.argv[2] || process.env.PROMPTOR_HTML || path.join(ROOT, 'index.html'));
 
 /* ════════════════════════════════════════════════════════════════════════════
    SPEC CONSTANTS — the source of truth for this harness.
