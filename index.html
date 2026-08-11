@@ -4,8 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>prompTOR // rich prompt editor</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+/* Self-hosted. No third-party requests — the page must work offline and must
+   not phone home. Only the six weights actually used are shipped; Orbitron 500,
+   Rajdhani 500 and JetBrains Mono 300/500 were requested by the old CDN link
+   and referenced nowhere. All three families are SIL Open Font License 1.1;
+   see fonts/LICENSE.md. */
+@font-face{font-family:'Orbitron';font-style:normal;font-weight:700;font-display:swap;
+  src:url('fonts/orbitron-700.woff2') format('woff2');}
+@font-face{font-family:'Orbitron';font-style:normal;font-weight:900;font-display:swap;
+  src:url('fonts/orbitron-900.woff2') format('woff2');}
+@font-face{font-family:'Rajdhani';font-style:normal;font-weight:600;font-display:swap;
+  src:url('fonts/rajdhani-600.woff2') format('woff2');}
+@font-face{font-family:'Rajdhani';font-style:normal;font-weight:700;font-display:swap;
+  src:url('fonts/rajdhani-700.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono',monospace;font-style:normal;font-weight:400;font-display:swap;
+  src:url('fonts/jetbrains-mono-400.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono',monospace;font-style:normal;font-weight:700;font-display:swap;
+  src:url('fonts/jetbrains-mono-700.woff2') format('woff2');}
+
 :root{
   --bg:#07080e; --bg2:#0a0c15;
   --surface:#0f1119; --surface2:#161a26; --surface3:#1f2533;
@@ -47,7 +64,7 @@ body{
 #basedir-wrap{display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border);
   border-radius:6px; padding:0 10px; height:32px; min-width:250px;}
 #basedir-label{font-size:10px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;}
-#basedir-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono'; font-size:12px; outline:none; flex:1; min-width:0;}
+#basedir-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono',monospace; font-size:12px; outline:none; flex:1; min-width:0;}
 /* ── LAYOUT ── */
 #layout{flex:1; display:flex; overflow:hidden;}
 #sidebar{width:var(--sidebar-w); background:linear-gradient(180deg,var(--surface),var(--bg2));
@@ -83,25 +100,25 @@ body{
 #name-input{flex:1; background:none; border:none; color:var(--text); font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; outline:none; letter-spacing:.02em;}
 #name-input::placeholder{color:var(--muted);}
 #template-select,#status-select{background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 10px;
-  border-radius:5px; font-family:'JetBrains Mono'; font-size:11px; outline:none; cursor:pointer;}
+  border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:11px; outline:none; cursor:pointer;}
 #template-select:focus,#status-select:focus{border-color:var(--miku);}
 #fields-wrap{flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:13px;}
 .field{background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; transition:border-color .15s,box-shadow .15s;}
 .field:focus-within{border-color:var(--acid-dim); box-shadow:var(--glow-acid);}
 .field-head{padding:8px 12px; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px;}
 .field-num{width:18px; height:18px; background:var(--acid-deep); color:var(--acid); border-radius:3px; display:grid; place-items:center; font-size:9px; font-weight:700; flex-shrink:0;}
-.field-tag{font-family:'JetBrains Mono'; font-size:11px; color:var(--miku);}
+.field-tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--miku);}
 .field-tag .ang{color:var(--muted);}
 .field-name{font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--acid);}
 .field-hint{margin-left:auto; font-size:10px; color:var(--muted);}
 .file-row{padding:6px 12px; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:5px; align-items:center; min-height:34px; background:var(--bg);}
 .file-pill{display:inline-flex; align-items:center; gap:5px; background:var(--blue-dim); border:1px solid #0d4163; color:var(--blue);
-  font-size:11px; padding:2px 7px; border-radius:4px; font-family:'JetBrains Mono';}
+  font-size:11px; padding:2px 7px; border-radius:4px; font-family:'JetBrains Mono',monospace;}
 .file-pill-del{background:none; border:none; color:#3a6a8a; cursor:pointer; font-size:13px; line-height:1; padding:0 0 0 2px;}
 .file-pill-del:hover{color:var(--pink);}
-.file-add-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono'; font-size:11px; outline:none; min-width:130px; flex:1;}
+.file-add-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono',monospace; font-size:11px; outline:none; min-width:130px; flex:1;}
 .file-add-input::placeholder{color:var(--muted);}
-.field-ta{width:100%; background:none; border:none; color:var(--text); font-family:'JetBrains Mono'; font-size:13px; line-height:1.75;
+.field-ta{width:100%; background:none; border:none; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.75;
   padding:11px 12px; resize:none; outline:none; min-height:70px; overflow-y:hidden; caret-color:var(--acid);}
 .field-ta::placeholder{color:var(--muted); font-size:12px;}
 .field.vim-normal .field-ta{caret-color:var(--acid); background:rgba(232,255,71,.018);}
@@ -111,7 +128,7 @@ body{
 .blocks-field .field-head{background:var(--surface2);}
 #blocks-row{display:flex; flex-wrap:wrap; gap:6px; padding:11px 12px; background:var(--bg);}
 .block-toggle{display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--muted2); background:var(--surface);
-  border:1px solid var(--border); padding:4px 9px; border-radius:5px; cursor:pointer; font-family:'JetBrains Mono'; transition:.12s; user-select:none;}
+  border:1px solid var(--border); padding:4px 9px; border-radius:5px; cursor:pointer; font-family:'JetBrains Mono',monospace; transition:.12s; user-select:none;}
 .block-toggle:hover{border-color:var(--border2); color:var(--text);}
 .block-toggle.on{background:var(--miku-dim); border-color:var(--miku); color:var(--miku); box-shadow:var(--glow-miku);}
 .block-toggle .bt-box{width:12px; height:12px; border-radius:3px; border:1px solid var(--muted); display:grid; place-items:center; font-size:9px; line-height:1; flex-shrink:0;}
@@ -126,11 +143,11 @@ body{
 .btn-danger{background:var(--pink-dim); color:var(--pink); border:1px solid #5a1840;} .btn-danger:hover{background:#5a1840;}
 /* segmented toggles */
 .seg{display:inline-flex; border:1px solid var(--border2); border-radius:5px; overflow:hidden;}
-.seg button{background:var(--surface2); color:var(--muted2); border:none; padding:6px 11px; font-family:'JetBrains Mono'; font-size:11px; cursor:pointer; transition:.12s;}
+.seg button{background:var(--surface2); color:var(--muted2); border:none; padding:6px 11px; font-family:'JetBrains Mono',monospace; font-size:11px; cursor:pointer; transition:.12s;}
 .seg button.on{background:var(--miku-dim); color:var(--miku);}
 .seg.acid button.on{background:var(--acid-deep); color:var(--acid);}
 .seg button:hover:not(.on){color:var(--text);}
-#vim-hud{margin-left:auto; display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono'; font-size:11px;}
+#vim-hud{margin-left:auto; display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:11px;}
 #vim-mode{font-family:'Orbitron',sans-serif; font-weight:700; font-size:11px; letter-spacing:.14em; padding:3px 10px; border-radius:4px; min-width:78px; text-align:center;}
 .vm-off{background:var(--surface3); color:var(--muted2);}
 .vm-normal{background:var(--acid-deep); color:var(--acid); box-shadow:var(--glow-acid);}
@@ -138,7 +155,7 @@ body{
 .vm-visual{background:var(--pink-dim); color:var(--pink); box-shadow:var(--glow-pink);}
 #vim-hint{color:var(--muted2); max-width:430px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 #vim-hint b{color:var(--acid); font-weight:500;}
-#vim-help-btn{background:none; border:1px solid var(--border2); color:var(--muted2); border-radius:4px; width:24px; height:24px; cursor:pointer; font-family:'JetBrains Mono';}
+#vim-help-btn{background:none; border:1px solid var(--border2); color:var(--muted2); border-radius:4px; width:24px; height:24px; cursor:pointer; font-family:'JetBrains Mono',monospace;}
 #vim-help-btn:hover{border-color:var(--pink); color:var(--pink);}
 /* ── PREVIEW ── */
 #preview-panel{width:400px; border-left:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; background:var(--bg2);}
@@ -148,7 +165,7 @@ body{
   text-transform:uppercase; color:var(--muted2); padding:4px 9px; border-radius:4px; transition:.12s;}
 .ptab.active{background:var(--surface2); color:var(--acid); box-shadow:var(--glow-acid);}
 .ptab:hover:not(.active){color:var(--text);}
-#preview-text{flex:1; overflow-y:auto; padding:14px; font-size:12px; line-height:1.8; color:var(--muted2); white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono';}
+#preview-text{flex:1; overflow-y:auto; padding:14px; font-size:12px; line-height:1.8; color:var(--muted2); white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono',monospace;}
 .pv-tag{color:var(--miku);} .pv-head{color:var(--acid); font-weight:700;} .pv-file{color:var(--blue);} .pv-meta{color:var(--pink);} .pv-fence{color:var(--muted);}
 /* ── EMPTY ── */
 #empty{flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--muted);}
@@ -159,7 +176,7 @@ body{
 #modal{background:var(--surface); border:1px solid var(--miku); border-radius:10px; box-shadow:var(--glow-miku); width:min(680px,92vw); max-height:84vh; overflow-y:auto; padding:22px 26px;}
 #modal h2{font-family:'Orbitron',sans-serif; color:var(--miku); font-size:16px; letter-spacing:.1em; margin-bottom:6px;}
 #modal .sub{color:var(--muted2); font-size:12px; margin-bottom:16px;}
-.cheat-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 22px; font-family:'JetBrains Mono'; font-size:12px;}
+.cheat-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 22px; font-family:'JetBrains Mono',monospace; font-size:12px;}
 .cheat-grid .grp{grid-column:1/-1; color:var(--acid); font-weight:700; margin-top:12px; letter-spacing:.06em;}
 .cheat-grid .k{color:var(--pink);}
 .cheat-grid .d{color:var(--muted2);}
