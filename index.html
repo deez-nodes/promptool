@@ -3,874 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>prompTOR // rich prompt editor</title>
+<title>PrompTool</title>
 <style>
-/* Self-hosted. No third-party requests — the page must work offline and must
-   not phone home. Only the six weights actually used are shipped; Orbitron 500,
-   Rajdhani 500 and JetBrains Mono 300/500 were requested by the old CDN link
-   and referenced nowhere. All three families are SIL Open Font License 1.1;
-   see fonts/LICENSE.md. */
-@font-face{font-family:'Orbitron';font-style:normal;font-weight:700;font-display:swap;
-  src:url('fonts/orbitron-700.woff2') format('woff2');}
-@font-face{font-family:'Orbitron';font-style:normal;font-weight:900;font-display:swap;
-  src:url('fonts/orbitron-900.woff2') format('woff2');}
-@font-face{font-family:'Rajdhani';font-style:normal;font-weight:600;font-display:swap;
-  src:url('fonts/rajdhani-600.woff2') format('woff2');}
-@font-face{font-family:'Rajdhani';font-style:normal;font-weight:700;font-display:swap;
-  src:url('fonts/rajdhani-700.woff2') format('woff2');}
-@font-face{font-family:'JetBrains Mono',monospace;font-style:normal;font-weight:400;font-display:swap;
-  src:url('fonts/jetbrains-mono-400.woff2') format('woff2');}
-@font-face{font-family:'JetBrains Mono',monospace;font-style:normal;font-weight:700;font-display:swap;
-  src:url('fonts/jetbrains-mono-700.woff2') format('woff2');}
+/* Self-hosted. No third-party requests — the page works offline and never phones home.
+   All three families are SIL Open Font License 1.1; see fonts/LICENSE.md. */
+@font-face{font-family:'Orbitron';font-weight:900;font-display:swap;src:url('fonts/orbitron-900.woff2') format('woff2');}
+@font-face{font-family:'Rajdhani';font-weight:700;font-display:swap;src:url('fonts/rajdhani-700.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono';font-weight:400;font-display:swap;src:url('fonts/jetbrains-mono-400.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono';font-weight:700;font-display:swap;src:url('fonts/jetbrains-mono-700.woff2') format('woff2');}
 
 :root{
-  --bg:#07080e; --bg2:#0a0c15;
-  --surface:#0f1119; --surface2:#161a26; --surface3:#1f2533;
+  --bg:#07080e; --surface:#0f1119; --surface2:#161a26; --surface3:#1f2533;
   --border:#222a3c; --border2:#313c54;
-  --acid:#e8ff47; --acid-dim:#454f17; --acid-deep:#262c0c;
-  --miku:#39d4c8; --miku-dim:#0d3b39;
-  --blue:#5cc8ff; --blue-dim:#0c2f47;
-  --pink:#ff4da6; --pink-dim:#3d0e29;
-  --magenta:#ff2d78;
-  --green:#5dffb0;
+  --acid:#e8ff47; --miku:#39d4c8; --pink:#ff4da6; --green:#5dffb0;
   --text:#dfe6f0; --muted:#54607a; --muted2:#808ea8;
-  --glow-acid:0 0 14px rgba(232,255,71,.40);
-  --glow-miku:0 0 14px rgba(57,212,200,.45);
-  --glow-pink:0 0 14px rgba(255,77,166,.45);
-  --sidebar-w:262px; --header-h:50px;
+  --glow-acid:0 0 14px rgba(232,255,71,.35);
+  --glow-miku:0 0 12px rgba(57,212,200,.35);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
 body{
-  font-family:'JetBrains Mono',monospace; background:var(--bg); color:var(--text);
-  height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; line-height:1.5;
+  background:var(--bg); color:var(--text); display:flex; flex-direction:column; overflow:hidden;
   background-image:
-    radial-gradient(1100px 600px at 12% -10%, rgba(232,255,71,.06), transparent 60%),
-    radial-gradient(900px 600px at 100% 0%, rgba(57,212,200,.06), transparent 55%),
-    radial-gradient(900px 700px at 85% 110%, rgba(255,77,166,.05), transparent 55%);
+    radial-gradient(1100px 600px at 10% -10%, rgba(232,255,71,.05), transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, rgba(57,212,200,.05), transparent 55%),
+    radial-gradient(900px 700px at 85% 110%, rgba(255,77,166,.04), transparent 55%);
 }
-/* ── HEADER ── */
-#header{height:var(--header-h); background:linear-gradient(180deg,var(--surface),var(--bg2));
-  border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:16px; flex-shrink:0;}
-#logo{font-family:'Orbitron',sans-serif; font-weight:900; font-size:17px; letter-spacing:.18em;
-  color:var(--acid); text-shadow:var(--glow-acid); text-transform:uppercase;}
-#logo b{color:var(--miku); text-shadow:var(--glow-miku);}
-#logo span{font-family:'Rajdhani',sans-serif; color:var(--muted2); font-size:12px; letter-spacing:.16em; margin-left:10px; font-weight:600;}
-#mode-tabs{display:flex; gap:3px; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:3px;}
-.mode-tab{padding:5px 15px; border-radius:4px; font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700; letter-spacing:.1em;
-  text-transform:uppercase; cursor:pointer; border:none; background:none; color:var(--muted2); transition:all .15s;}
-.mode-tab.active{background:var(--surface2); color:var(--acid); box-shadow:inset 0 0 0 1px var(--acid-dim), var(--glow-acid);}
-.mode-tab:hover:not(.active){color:var(--text);}
-#header-spacer{flex:1;}
-#basedir-wrap{display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border);
-  border-radius:6px; padding:0 10px; height:32px; min-width:250px;}
-#basedir-label{font-size:10px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;}
-#basedir-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono',monospace; font-size:12px; outline:none; flex:1; min-width:0;}
-/* ── LAYOUT ── */
-#layout{flex:1; display:flex; overflow:hidden;}
-#sidebar{width:var(--sidebar-w); background:linear-gradient(180deg,var(--surface),var(--bg2));
-  border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0;}
-#sidebar-section{padding:11px 12px 8px; font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:.18em;
-  text-transform:uppercase; color:var(--miku); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
-#item-count{color:var(--muted2);}
-#item-list{flex:1; overflow-y:auto; padding:8px;}
-.list-item{padding:9px 11px; border-radius:6px; cursor:pointer; border:1px solid transparent; margin-bottom:4px;
-  transition:all .12s; position:relative; display:flex; flex-direction:column; gap:3px; background:var(--surface);}
-.list-item:hover{background:var(--surface2); border-color:var(--border2);}
-.list-item.active{background:var(--surface2); border-color:var(--acid-dim); box-shadow:var(--glow-acid);}
-.list-item.active .item-title{color:var(--acid);}
-.item-title{font-size:12.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:18px;}
-.item-meta{display:flex; gap:6px; align-items:center;}
-.item-badge{font-size:9px; padding:1px 6px; border-radius:3px; letter-spacing:.06em; text-transform:uppercase; font-weight:700;}
-.badge-task{background:var(--blue-dim); color:var(--blue);}
-.badge-prompt{background:var(--acid-deep); color:var(--acid);}
-.badge-pe{background:var(--miku-dim); color:var(--miku);}
-.badge-done{background:#11331f; color:var(--green);}
-.badge-blocked{background:var(--pink-dim); color:var(--pink);}
-.item-date{font-size:10px; color:var(--muted);}
-.item-del{position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted);
-  cursor:pointer; font-size:15px; opacity:0; transition:.12s; line-height:1;}
-.list-item:hover .item-del{opacity:1;} .item-del:hover{color:var(--pink);}
-#new-btn{margin:8px; padding:9px; background:none; border:1px dashed var(--border2); border-radius:6px; color:var(--muted2);
-  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13px; letter-spacing:.1em; cursor:pointer; transition:.15s; text-transform:uppercase;}
-#new-btn:hover{border-color:var(--miku); color:var(--miku); box-shadow:var(--glow-miku);}
-/* ── MAIN ── */
-#main{flex:1; display:flex; flex-direction:column; overflow:hidden;}
-#topbar{padding:11px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0;
-  background:linear-gradient(180deg,var(--surface),transparent);}
-#name-input{flex:1; background:none; border:none; color:var(--text); font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; outline:none; letter-spacing:.02em;}
-#name-input::placeholder{color:var(--muted);}
-#template-select,#status-select{background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 10px;
-  border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:11px; outline:none; cursor:pointer;}
-#template-select:focus,#status-select:focus{border-color:var(--miku);}
-#fields-wrap{flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:13px;}
-.field{background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; transition:border-color .15s,box-shadow .15s;}
-.field:focus-within{border-color:var(--acid-dim); box-shadow:var(--glow-acid);}
-.field-head{padding:8px 12px; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px;}
-.field-num{width:18px; height:18px; background:var(--acid-deep); color:var(--acid); border-radius:3px; display:grid; place-items:center; font-size:9px; font-weight:700; flex-shrink:0;}
-.field-tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--miku);}
-.field-tag .ang{color:var(--muted);}
-.field-name{font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--acid);}
-.field-hint{margin-left:auto; font-size:10px; color:var(--muted);}
-.file-row{padding:6px 12px; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:5px; align-items:center; min-height:34px; background:var(--bg);}
-.file-pill{display:inline-flex; align-items:center; gap:5px; background:var(--blue-dim); border:1px solid #0d4163; color:var(--blue);
-  font-size:11px; padding:2px 7px; border-radius:4px; font-family:'JetBrains Mono',monospace;}
-.file-pill-del{background:none; border:none; color:#3a6a8a; cursor:pointer; font-size:13px; line-height:1; padding:0 0 0 2px;}
-.file-pill-del:hover{color:var(--pink);}
-.file-add-input{background:none; border:none; color:var(--blue); font-family:'JetBrains Mono',monospace; font-size:11px; outline:none; min-width:130px; flex:1;}
-.file-add-input::placeholder{color:var(--muted);}
-.field-ta{width:100%; background:none; border:none; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.75;
-  padding:11px 12px; resize:none; outline:none; min-height:70px; overflow-y:hidden; caret-color:var(--acid);}
-.field-ta::placeholder{color:var(--muted); font-size:12px;}
-.field.vim-normal .field-ta{caret-color:var(--acid); background:rgba(232,255,71,.018);}
-.field.vim-visual .field-ta{caret-color:var(--pink);}
-.field-ta::selection{background:rgba(255,77,166,.35);}
-/* block toggles */
-.blocks-field .field-head{background:var(--surface2);}
-#blocks-row{display:flex; flex-wrap:wrap; gap:6px; padding:11px 12px; background:var(--bg);}
-.block-toggle{display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--muted2); background:var(--surface);
-  border:1px solid var(--border); padding:4px 9px; border-radius:5px; cursor:pointer; font-family:'JetBrains Mono',monospace; transition:.12s; user-select:none;}
-.block-toggle:hover{border-color:var(--border2); color:var(--text);}
-.block-toggle.on{background:var(--miku-dim); border-color:var(--miku); color:var(--miku); box-shadow:var(--glow-miku);}
-.block-toggle .bt-box{width:12px; height:12px; border-radius:3px; border:1px solid var(--muted); display:grid; place-items:center; font-size:9px; line-height:1; flex-shrink:0;}
-.block-toggle.on .bt-box{background:var(--miku); border-color:var(--miku); color:#04201e;}
-/* ── ACTIONS + VIM HUD ── */
-#actions{padding:9px 20px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center;
-  background:linear-gradient(0deg,var(--surface),transparent); flex-shrink:0; flex-wrap:wrap;}
-.btn{padding:7px 15px; border-radius:5px; border:none; font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700;
-  cursor:pointer; transition:.15s; letter-spacing:.08em; text-transform:uppercase;}
-.btn-primary{background:var(--acid); color:#0a0c00; box-shadow:var(--glow-acid);} .btn-primary:hover{background:#f2ff7a;}
-.btn-secondary{background:var(--surface2); color:var(--text); border:1px solid var(--border2);} .btn-secondary:hover{border-color:var(--miku); color:var(--miku);}
-.btn-danger{background:var(--pink-dim); color:var(--pink); border:1px solid #5a1840;} .btn-danger:hover{background:#5a1840;}
-/* segmented toggles */
-.seg{display:inline-flex; border:1px solid var(--border2); border-radius:5px; overflow:hidden;}
-.seg button{background:var(--surface2); color:var(--muted2); border:none; padding:6px 11px; font-family:'JetBrains Mono',monospace; font-size:11px; cursor:pointer; transition:.12s;}
-.seg button.on{background:var(--miku-dim); color:var(--miku);}
-.seg.acid button.on{background:var(--acid-deep); color:var(--acid);}
-.seg button:hover:not(.on){color:var(--text);}
-#vim-hud{margin-left:auto; display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:11px;}
-#vim-mode{font-family:'Orbitron',sans-serif; font-weight:700; font-size:11px; letter-spacing:.14em; padding:3px 10px; border-radius:4px; min-width:78px; text-align:center;}
-.vm-off{background:var(--surface3); color:var(--muted2);}
-.vm-normal{background:var(--acid-deep); color:var(--acid); box-shadow:var(--glow-acid);}
-.vm-insert{background:var(--miku-dim); color:var(--miku); box-shadow:var(--glow-miku);}
-.vm-visual{background:var(--pink-dim); color:var(--pink); box-shadow:var(--glow-pink);}
-#vim-hint{color:var(--muted2); max-width:430px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-#vim-hint b{color:var(--acid); font-weight:500;}
-#vim-help-btn{background:none; border:1px solid var(--border2); color:var(--muted2); border-radius:4px; width:24px; height:24px; cursor:pointer; font-family:'JetBrains Mono',monospace;}
-#vim-help-btn:hover{border-color:var(--pink); color:var(--pink);}
-/* ── PREVIEW ── */
-#preview-panel{width:400px; border-left:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; background:var(--bg2);}
-#preview-header{padding:9px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface); gap:8px;}
-#preview-tabs{display:flex; gap:3px;}
-.ptab{background:none; border:none; cursor:pointer; font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--muted2); padding:4px 9px; border-radius:4px; transition:.12s;}
-.ptab.active{background:var(--surface2); color:var(--acid); box-shadow:var(--glow-acid);}
-.ptab:hover:not(.active){color:var(--text);}
-#preview-text{flex:1; overflow-y:auto; padding:14px; font-size:12px; line-height:1.8; color:var(--muted2); white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono',monospace;}
-.pv-tag{color:var(--miku);} .pv-head{color:var(--acid); font-weight:700;} .pv-file{color:var(--blue);} .pv-meta{color:var(--pink);} .pv-fence{color:var(--muted);}
-/* ── EMPTY ── */
-#empty{flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--muted);}
-#empty-glyph{font-family:'Orbitron',sans-serif; font-size:54px; font-weight:900; letter-spacing:.2em; color:var(--surface3); text-shadow:0 0 22px rgba(232,255,71,.12);}
-/* ── MODAL ── */
-#modal-bg{position:fixed; inset:0; background:rgba(4,5,9,.75); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:50;}
-#modal-bg.show{display:flex;}
-#modal{background:var(--surface); border:1px solid var(--miku); border-radius:10px; box-shadow:var(--glow-miku); width:min(680px,92vw); max-height:84vh; overflow-y:auto; padding:22px 26px;}
-#modal h2{font-family:'Orbitron',sans-serif; color:var(--miku); font-size:16px; letter-spacing:.1em; margin-bottom:6px;}
-#modal .sub{color:var(--muted2); font-size:12px; margin-bottom:16px;}
-.cheat-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 22px; font-family:'JetBrains Mono',monospace; font-size:12px;}
-.cheat-grid .grp{grid-column:1/-1; color:var(--acid); font-weight:700; margin-top:12px; letter-spacing:.06em;}
-.cheat-grid .k{color:var(--pink);}
-.cheat-grid .d{color:var(--muted2);}
-.modal-close{float:right; background:none; border:1px solid var(--border2); color:var(--muted2); border-radius:5px; padding:4px 10px; cursor:pointer; font-family:'Rajdhani',sans-serif; font-weight:700;}
-.modal-close:hover{border-color:var(--pink); color:var(--pink);}
-/* toast + scrollbars */
-#toast{position:fixed; bottom:22px; right:22px; background:var(--acid); color:#0a0c00; font-family:'Rajdhani',sans-serif; font-weight:700;
-  font-size:13px; padding:9px 18px; border-radius:5px; opacity:0; transform:translateY(8px); transition:.18s; pointer-events:none; letter-spacing:.06em; box-shadow:var(--glow-acid);}
-#toast.show{opacity:1; transform:translateY(0);}
-::-webkit-scrollbar{width:5px; height:5px;} ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border2); border-radius:3px;} ::-webkit-scrollbar-thumb:hover{background:var(--miku);}
-/* ── char count ── */
-#char-count{font-size:11px; color:var(--muted); letter-spacing:.06em; white-space:nowrap;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ── header ── */
+#header{height:48px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:linear-gradient(180deg,var(--surface),var(--bg));border-bottom:1px solid var(--border);}
+#logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:15px;letter-spacing:.2em;
+  color:var(--acid);text-shadow:var(--glow-acid);}
+#logo i{font-style:normal;color:var(--miku);text-shadow:var(--glow-miku);}
+.grow{flex:1;}
+.hint{color:var(--muted);font-size:11px;}
+
+/* ── controls ── */
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:var(--text);
+  background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;outline:none;}
+button{cursor:pointer;transition:border-color .12s,color .12s;white-space:nowrap;}
+button:hover{border-color:var(--acid);color:var(--acid);}
+button.primary{border-color:var(--acid-dim,#454f17);color:var(--acid);}
+input:focus,select:focus,textarea:focus{border-color:var(--border2);}
+input::placeholder,textarea::placeholder{color:var(--muted);}
+
+/* ── layout ── */
+#layout{flex:1;display:flex;min-height:0;}
+#sidebar{width:288px;flex-shrink:0;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;min-height:0;background:rgba(15,17,25,.55);}
+#editor{flex:1;min-width:0;overflow-y:auto;padding:14px 16px 60px;}
+#preview-pane{width:37%;min-width:300px;flex-shrink:0;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;min-height:0;background:rgba(15,17,25,.55);}
+
+.pane-head{display:flex;align-items:center;gap:7px;padding:7px 9px;flex-shrink:0;
+  border-bottom:1px solid var(--border);background:var(--surface);}
+.pane-label{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted2);}
+.list{flex:1;overflow-y:auto;min-height:0;}
+.list:empty::after{content:'nothing yet';display:block;padding:14px 10px;color:var(--muted);font-size:11px;}
+
+.row{padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.row:hover{background:var(--surface2);}
+.row.on{background:var(--surface3);box-shadow:inset 2px 0 0 var(--acid);}
+.row-title{display:flex;align-items:center;gap:6px;}
+.row-sub{color:var(--muted);font-size:11px;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.badge{font-size:9px;font-weight:700;letter-spacing:.1em;padding:1px 5px;border-radius:3px;
+  background:var(--miku);color:var(--bg);}
+.tagchip{color:var(--miku);}
+
+/* ── sections ── */
+#prompt-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+#prompt-name{flex:1;font-size:15px;font-weight:700;background:none;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:6px 2px;}
+#prompt-name:focus{border-bottom-color:var(--acid);}
+
+.section{border:1px solid var(--border);border-radius:7px;margin-bottom:10px;background:var(--surface);
+  transition:border-color .12s;}
+.section:focus-within{border-color:var(--border2);}
+.section.off{opacity:.45;}
+.section.drag{border-color:var(--acid);border-style:dashed;}
+.section-head{display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--border);}
+.section-num{background:var(--acid);color:var(--bg);font-weight:700;font-size:11px;
+  border-radius:3px;padding:0 5px;cursor:grab;}
+.section-tag{width:210px;background:none;border:none;color:var(--miku);padding:2px 0;font-weight:700;}
+.section-tag:focus{color:var(--acid);}
+.section-head label{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:11px;cursor:pointer;}
+.section-body{width:100%;min-height:74px;background:none;border:none;border-radius:0;
+  padding:9px 10px;resize:vertical;line-height:1.6;}
+.icon{background:none;border:none;color:var(--muted);padding:2px 5px;}
+.icon:hover{color:var(--pink);}
+
+/* ── preview ── */
+#preview{flex:1;overflow:auto;padding:12px 13px;white-space:pre-wrap;word-break:break-word;
+  font-size:12.5px;line-height:1.65;color:var(--muted2);}
+#preview .t{color:var(--acid);text-shadow:var(--glow-acid);}
+#preview:empty::after{content:'// nothing included yet';color:var(--surface3);}
+
+/* ── completion popup ── */
+#ac{position:fixed;z-index:40;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:5px;padding:3px;display:none;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.6);}
+#ac div{padding:3px 8px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#ac div.on{background:var(--surface3);color:var(--acid);}
+#ac b{color:var(--miku);}
+
+/* ── misc ── */
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:60;
+  background:var(--surface3);border:1px solid var(--acid);border-radius:5px;padding:7px 15px;
+  opacity:0;transition:opacity .18s;pointer-events:none;}
+#toast.on{opacity:1;}
+dialog{background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:9px;
+  padding:16px;width:min(560px,92vw);}
+dialog::backdrop{background:rgba(0,0,0,.6);}
+#bank-text{width:100%;height:300px;line-height:1.7;resize:vertical;}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:11px;}
+#empty{color:var(--muted);text-align:center;padding:70px 20px;}
 </style>
 </head>
 <body>
 
 <div id="header">
-  <div id="logo">promp<b>TOR</b><span>// rich prompt editor</span></div>
-  <div id="mode-tabs">
-    <button class="mode-tab active" id="tab-prompt" onclick="setMode('prompt')">Prompts</button>
-    <button class="mode-tab" id="tab-task" onclick="setMode('task')">Tasks</button>
-  </div>
-  <div id="header-spacer"></div>
-  <div id="basedir-wrap">
-    <span id="basedir-label">base dir</span>
-    <input id="basedir-input" type="text" placeholder="~/Projects/..." spellcheck="false">
-  </div>
+  <div id="logo">PROMP<i>TOOL</i></div>
+  <button id="btn-new" class="primary">+ New</button>
+  <button id="btn-add-section">+ Section</button>
+  <button id="btn-template">Template</button>
+  <button id="btn-delete">Delete</button>
+  <div class="grow"></div>
+  <span class="hint">Tab completes &nbsp;·&nbsp; Ctrl+M banks selection</span>
+  <button id="btn-bank">Bank</button>
+  <button id="btn-export">Export</button>
+  <button id="btn-import">Import</button>
+  <input id="file-import" type="file" accept="application/json" hidden>
 </div>
 
 <div id="layout">
+
   <div id="sidebar">
-    <div id="sidebar-section"><span id="sidebar-label">prompts</span><span id="item-count">0</span></div>
-    <div id="item-list"></div>
-    <button id="new-btn" onclick="newItem()">+ New</button>
-  </div>
-
-  <div id="main">
-    <div id="topbar" style="display:none">
-      <input id="name-input" type="text" placeholder="Untitled" maxlength="80" oninput="saveCurrent()">
-      <select id="template-select" onchange="changeTemplate()">
-        <optgroup label="── Prompt Templates ──">
-          <option value="promptology">Promptology</option>
-          <option value="general">General</option>
-          <option value="dev">Dev / Code</option>
-        </optgroup>
-        <optgroup label="── Best-Practice (Anthropic) ──">
-          <option value="pe_general">PE — General Task</option>
-          <option value="pe_extract">PE — Structured Extract</option>
-          <option value="pe_longdoc">PE — Long Document</option>
-          <option value="pe_agentic">PE — Agentic Coding</option>
-          <option value="pe_research">PE — Research</option>
-          <option value="pe_role">PE — Role Assistant</option>
-        </optgroup>
-        <optgroup label="── TradeSlayer ──">
-          <option value="ts_signal">TS — Signal Engine</option>
-          <option value="ts_ui">TS — Frontend Component</option>
-          <option value="ts_schema">TS — Schema / DB</option>
-          <option value="ts_debug">TS — Debug Session</option>
-        </optgroup>
-        <optgroup label="── Tasks ──">
-          <option value="claude_code">Claude Code Task</option>
-        </optgroup>
-      </select>
-      <select id="status-select" onchange="saveCurrent()" style="display:none">
-        <option value="ready">● Ready</option><option value="in_progress">◎ In Progress</option>
-        <option value="done">✓ Done</option><option value="blocked">✗ Blocked</option>
+    <div class="pane-head">
+      <span class="pane-label">Prompts</span>
+      <select id="filter-kind">
+        <option value="">all</option><option value="filled">filled</option><option value="template">templates</option>
       </select>
     </div>
-    <div id="fields-wrap" style="display:none"></div>
-    <div id="actions" style="display:none">
-      <button class="btn btn-primary" onclick="copyPrompt()">Copy</button>
-      <button class="btn btn-secondary" onclick="saveMd()">Save</button>
-      <button class="btn btn-secondary" onclick="copyRaw()" title="Copy the built prompt as raw text">Copy Raw</button>
-      <span id="char-count">0 chars</span>
-      <div class="seg acid" id="fmt-seg" title="Output format">
-        <button id="fmt-xml" class="on" onclick="setFmt('xml')">&lt;XML&gt;</button>
-        <button id="fmt-md" onclick="setFmt('md')">MD</button>
-      </div>
-      <div class="seg" id="vim-seg" title="Vim editing (toggle)">
-        <button id="vim-on" onclick="setVim(true)">VIM</button>
-        <button id="vim-off" class="on" onclick="setVim(false)">OFF</button>
-      </div>
-      <div id="vim-hud">
-        <span id="vim-mode" class="vm-off">VIM OFF</span>
-        <span id="vim-hint">vim editing is off — flip the VIM switch to drill modal editing</span>
-        <button id="vim-help-btn" onclick="toggleCheat()" title="Vim cheatsheet">?</button>
-      </div>
+    <div class="pane-head" style="border-bottom:none;padding-bottom:4px;">
+      <input id="q-prompts" class="grow" placeholder="search prompts…" spellcheck="false">
     </div>
-    <div id="empty">
-      <div id="empty-glyph">⌖</div>
-      <p style="font-size:12px">No prompt selected</p>
-      <button class="btn btn-secondary" onclick="newItem()">+ New</button>
+    <div id="list-prompts" class="list"></div>
+
+    <div class="pane-head" style="border-top:1px solid var(--border);">
+      <span class="pane-label">Section library</span>
+      <select id="filter-tag"><option value="">all tags</option></select>
     </div>
+    <div class="pane-head" style="border-bottom:none;padding-bottom:4px;">
+      <input id="q-sections" class="grow" placeholder="search sections…" spellcheck="false">
+    </div>
+    <div id="list-sections" class="list"></div>
   </div>
 
-  <div id="preview-panel">
-    <div id="preview-header">
-      <div id="preview-tabs">
-        <button class="ptab active" id="ptab-prompt" onclick="setPreview('prompt')">Prompt</button>
-        <button class="ptab" id="ptab-eval" onclick="setPreview('eval')">Eval Stub</button>
-      </div>
-      <button class="ptab" onclick="copyPreview()" style="color:var(--miku)">Copy ⧉</button>
+  <div id="editor">
+    <div id="prompt-bar">
+      <input id="prompt-name" placeholder="untitled" spellcheck="false">
     </div>
-    <div id="preview-text"><span style="color:var(--surface3)">// output appears here</span></div>
+    <div id="sections"></div>
+    <div id="empty">No prompt selected — hit <b>+ New</b>.</div>
   </div>
+
+  <div id="preview-pane">
+    <div class="pane-head">
+      <span class="pane-label">Output</span>
+      <div class="grow"></div>
+      <span id="char-count" class="hint"></span>
+      <button id="btn-copy">Copy</button>
+      <button id="btn-save-file">Save .xml</button>
+    </div>
+    <pre id="preview"></pre>
+  </div>
+
 </div>
 
-<div id="modal-bg" onclick="if(event.target.id==='modal-bg')toggleCheat()">
-  <div id="modal">
-    <button class="modal-close" onclick="toggleCheat()">esc</button>
-    <h2>VIM CHEATSHEET</h2>
-    <div class="sub">prompTOR implements the same modal subset as the Claude Code editor. Enter mode = Esc; not supported: macros, marks, :ex, registers, ctrl-v block.</div>
-    <div class="cheat-grid" id="cheat-grid"></div>
+<div id="ac"></div>
+
+<dialog id="dlg-bank">
+  <div class="pane-label" style="margin-bottom:8px;">Term bank — one per line</div>
+  <p class="hint" style="margin-bottom:9px;">
+    These complete on Tab in every prompt, and always rank above words harvested from the document.</p>
+  <textarea id="bank-text" spellcheck="false"></textarea>
+  <div class="dlg-foot">
+    <button id="btn-bank-close">Cancel</button>
+    <button id="btn-bank-save" class="primary">Save</button>
   </div>
-</div>
+</dialog>
 
 <div id="toast"></div>
 
-<script>
-// ═══════════════ TEMPLATES ═══════════════
-const TEMPLATES = {
-  promptology:{label:'Promptology',isTask:false,
-    fields:[
-      {key:'role',label:'Role / Context',hint:'who you are + constraints',hasFiles:false,placeholder:'Active day trader. MES/ES futures...'},
-      {key:'goal',label:'Goal',hint:'session-level objective',hasFiles:false,placeholder:'Build a gap scanner...'},
-      {key:'theory',label:'Background / Theory',hint:'what you believe is true',hasFiles:false,placeholder:'High volume gaps over $2 tend to hold...'},
-      {key:'state',label:'Current State',hint:'code / data / prior output',hasFiles:false,placeholder:'Paste existing code, output, or context...'},
-      {key:'task',label:'Task',hint:'exact imperative ask',hasFiles:false,placeholder:'Write a Python scanner that...'},
-      {key:'output',label:'Output Format',hint:'how you want the response',hasFiles:false,placeholder:'Code only. Inline comments...'},
-    ]},
-  general:{label:'General',isTask:false,
-    fields:[
-      {key:'role',label:'Role / Persona',hint:'who the AI acts as',hasFiles:false,placeholder:'Senior Architect...'},
-      {key:'context',label:'Context',hint:'background information',hasFiles:false,placeholder:'We are building a...'},
-      {key:'task',label:'Specific Task',hint:'the active imperative ask',hasFiles:false,placeholder:'Write a summary...'},
-      {key:'output',label:'Output Format',hint:'how the response should look',hasFiles:false,placeholder:'Markdown list...'},
-    ]},
-  dev:{label:'Dev / Code',isTask:false,
-    fields:[
-      {key:'env',label:'Tech Stack',hint:'tools, versions, platforms',hasFiles:false,placeholder:'Python 3.12, FastAPI, Nuxt 4...'},
-      {key:'files',label:'Reference Files',hint:'files to read',hasFiles:true,placeholder:''},
-      {key:'state',label:'Reference Code',hint:'raw code',hasFiles:false,placeholder:'Paste existing code here...'},
-      {key:'task',label:'Specific Task',hint:'the active imperative ask',hasFiles:false,placeholder:'Refactor this function for...'},
-      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'Keep architecture minimalist...'},
-    ]},
-  // ── TradeSlayer project templates (from promptology) ──
-  ts_signal:{label:'TS — Signal Engine',isTask:false,
-    fields:[
-      {key:'signal',label:'Signal / Module',hint:'which signal are we building',hasFiles:false,placeholder:'e.g. regime.py — HTF regime classifier'},
-      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
-      {key:'inputs',label:'Inputs',hint:'data sources & types',hasFiles:false,placeholder:'Schwab timesale_futures stream. Fields: price, size, bid, ask...'},
-      {key:'outputs',label:'Outputs / Events',hint:'what this emits',hasFiles:false,placeholder:'Emits regime: DISTRIBUTION | ACCUMULATION | RANGE | LIQUIDATION | TREND_UP | TREND_DOWN'},
-      {key:'math',label:'Math / Algorithm',hint:'approach to implement',hasFiles:false,placeholder:'HMM with 6 states. Kalman filter for trend estimation...'},
-      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'No blocking calls. Full type hints. Do not touch trade logging...'},
-    ]},
-  ts_ui:{label:'TS — Frontend Component',isTask:false,
-    fields:[
-      {key:'component',label:'Component',hint:'name + route',hasFiles:false,placeholder:'RegimeBanner.vue — persistent top bar on all pages'},
-      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
-      {key:'data',label:'Data / Props',hint:'what it consumes',hasFiles:false,placeholder:'useRegime composable. Expects: { regime: string, flags: string[] }'},
-      {key:'behavior',label:'Behavior',hint:'interactions & state',hasFiles:false,placeholder:'Updates every SSE regime event. Color shifts by regime type. Flags shown as dismissible chips...'},
-      {key:'layout',label:'Layout Notes',hint:'structure, not style',hasFiles:false,placeholder:'Fixed top bar. Regime label left. Flags right. No styling beyond layout Tailwind...'},
-      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'Stock Tailwind only — no custom CSS yet. TypeScript strict. No hardcoded data...'},
-    ]},
-  ts_schema:{label:'TS — Schema / DB',isTask:false,
-    fields:[
-      {key:'table',label:'Table / Schema',hint:'what we are defining',hasFiles:false,placeholder:'rule_checks — junction between trades and rules with confidence level'},
-      {key:'files',label:'Files to Change',hint:'exact paths',hasFiles:true,placeholder:''},
-      {key:'fields',label:'Fields',hint:'columns + types',hasFiles:false,placeholder:'id TEXT PK, trade_id TEXT FK, rule_id TEXT FK, confidence TEXT (none|weak|moderate|strong)'},
-      {key:'queries',label:'Required Queries',hint:'what needs to be queryable',hasFiles:false,placeholder:'Win rate by rule_id. Avg confidence for winning trades. Rules skipped per session...'},
-      {key:'rules',label:'Constraints',hint:'what NOT to do',hasFiles:false,placeholder:'DuckDB syntax. Full type hints on all query functions. No raw string SQL in routes...'},
-    ]},
-  ts_debug:{label:'TS — Debug Session',isTask:false,
-    fields:[
-      {key:'symptom',label:'Symptom',hint:'what is broken / wrong',hasFiles:false,placeholder:'useTradeLog composable returns empty array after POST succeeds'},
-      {key:'files',label:'Relevant Files',hint:'exact paths',hasFiles:true,placeholder:''},
-      {key:'error',label:'Error / Output',hint:'paste exact error or log',hasFiles:false,placeholder:'Paste stack trace, console output, or unexpected value...'},
-      {key:'tried',label:'Already Tried',hint:'what you have attempted',hasFiles:false,placeholder:'Confirmed POST returns 201. Checked network tab — GET /trades returns correct data...'},
-      {key:'scope',label:'Scope',hint:'what NOT to change',hasFiles:false,placeholder:'Do not refactor. Fix only. Do not touch python/ files...'},
-    ]},
-  claude_code:{label:'Claude Code Task',isTask:true,
-    fields:[
-      {key:'task_id',label:'Task ID',hint:'e.g. S1-03',hasFiles:false,placeholder:'S1-03'},
-      {key:'objective',label:'Objective',hint:'one sentence goal',hasFiles:false,placeholder:'Wire useTradeLog to GET /trades'},
-      {key:'files',label:'Files to Change',hint:'exact paths only',hasFiles:true,placeholder:''},
-      {key:'depends',label:'Depends On',hint:'task IDs this needs',hasFiles:false,placeholder:'S1-01, S1-02'},
-      {key:'scope',label:'Scope / Rules',hint:'what NOT to touch',hasFiles:false,placeholder:'Do not touch anything outside listed files.'},
-      {key:'notes',label:'Implementation Notes',hint:'context for claude',hasFiles:false,placeholder:'useTradeLog exposes: trades ref...'},
-    ]},
-  // ── Anthropic best-practice templates ──
-  pe_general:{label:'PE — General Task',isTask:false,evalGrader:'llm',blocks:[],blockOptions:['self-check','no-preamble','avoid-markdown'],
-    fields:[
-      {key:'role',label:'Role',hint:'system: who Claude is (D1)',hasFiles:false,placeholder:'a senior technical writer...'},
-      {key:'task',label:'Task',hint:'specific ask; request "above and beyond" (A1)',hasFiles:false,placeholder:'Write X. Go beyond the basics.'},
-      {key:'context',label:'Context / Why',hint:'motivation sharpens output (A2)',hasFiles:false,placeholder:'This will be read aloud, so...'},
-      {key:'examples',label:'Examples',hint:'3–5, wrapped in <example> (B1)',hasFiles:false,placeholder:'<example>\ninput: ...\noutput: ...\n</example>'},
-      {key:'output',label:'Output Format',hint:'say what TO do (F1)',hasFiles:false,placeholder:'Smoothly flowing prose.',prefill:'Respond directly, without preamble.'},
-    ]},
-  pe_extract:{label:'PE — Structured Extract',isTask:false,evalGrader:'json',blocks:['no-preamble'],blockOptions:['no-preamble','self-check'],
-    fields:[
-      {key:'input',label:'Input',hint:'text to process, in <input> (C1)',hasFiles:false,placeholder:'{{the text}}'},
-      {key:'fields',label:'Fields to Extract',hint:'keys + types',hasFiles:false,placeholder:'name (string), amount (number)'},
-      {key:'labels',label:'Labels (if class.)',hint:'enum of valid labels',hasFiles:false,placeholder:'positive | negative | neutral'},
-      {key:'output',label:'Output Format',hint:'Structured Outputs, not prefill (F5)',hasFiles:false,placeholder:'',prefill:'Return strict JSON matching the schema. Choose exactly one label. No prose.'},
-    ]},
-  pe_longdoc:{label:'PE — Long Document',isTask:false,evalGrader:'llm',blocks:[],blockOptions:['self-check'],
-    fields:[
-      {key:'documents',label:'Documents',hint:'data at top, <document> tags (E1)',hasFiles:true,placeholder:''},
-      {key:'paste',label:'Or Paste Docs',hint:'inline document text',hasFiles:false,placeholder:'<document index="1">...</document>'},
-      {key:'question',label:'Question',hint:'the actual task (asked last)',hasFiles:false,placeholder:'Identify strategic advantages...'},
-      {key:'instructions',label:'Instructions',hint:'quote-ground first (E3)',hasFiles:false,placeholder:'',prefill:'First find quotes relevant to the question in <quotes> tags. Then answer using only those quotes in <answer> tags.'},
-    ]},
-  pe_agentic:{label:'PE — Agentic Coding',isTask:false,evalGrader:'code',
-    blocks:['investigate-first','no-overengineering','general-solution','cleanup-temp-files'],
-    blockOptions:['investigate-first','no-overengineering','general-solution','cleanup-temp-files','autonomy-safety','conservative-action','parallel-tools','self-check'],
-    fields:[
-      {key:'env',label:'Environment',hint:'stack / harness',hasFiles:false,placeholder:'Claude Code, Python 3.12'},
-      {key:'files',label:'Files to Read',hint:'exact paths (read before edit)',hasFiles:true,placeholder:''},
-      {key:'task',label:'Task',hint:'EXPLICIT action ask, not "suggest" (G1)',hasFiles:false,placeholder:'Change this function to improve perf.'},
-      {key:'rules',label:'Scope / Rules',hint:'kept minimal by default (I2)',hasFiles:false,placeholder:'',prefill:"Only change what is requested or clearly necessary. Don't touch unrelated code."},
-    ]},
-  pe_research:{label:'PE — Research',isTask:false,evalGrader:'llm',blocks:[],blockOptions:['self-check','no-preamble'],
-    fields:[
-      {key:'question',label:'Research Question',hint:'what to find out',hasFiles:false,placeholder:'What is the current state of X?'},
-      {key:'success',label:'Success Criteria',hint:'what a complete answer covers (I8)',hasFiles:false,placeholder:'A complete answer names..., cites...'},
-      {key:'approach',label:'Approach',hint:'verify + hypotheses (I8)',hasFiles:false,placeholder:'',prefill:'Verify key facts across multiple independent sources. Track competing hypotheses and confidence; self-critique before concluding.'},
-    ]},
-  pe_role:{label:'PE — Role Assistant',isTask:false,evalGrader:'llm',blocks:[],blockOptions:['avoid-markdown','no-preamble','self-check'],
-    fields:[
-      {key:'role',label:'Role + Specialty',hint:'system prompt (D1)',hasFiles:false,placeholder:'a patient customer-support agent...'},
-      {key:'tone',label:'Tone & Style',hint:'how it should sound',hasFiles:false,placeholder:'Empathetic, concise, never defensive.'},
-      {key:'behavior',label:'Behavior Rules',hint:'do/avoid, escalation, limits',hasFiles:false,placeholder:'Confirm order number before acting.'},
-      {key:'identity',label:'Identity (opt.)',hint:'only if it must self-identify (D2)',hasFiles:false,placeholder:'The assistant is Claude, created by Anthropic.'},
-    ]},
-};
-// ═══════════════ BEST-PRACTICE BLOCKS ═══════════════
-const BLOCKS = {
-  'investigate-first':{label:'investigate-first',text:'<investigate_before_answering>\nNever speculate about code you have not opened. If the user references a specific file, read it before answering. Investigate relevant files BEFORE making any claim about the codebase. Give grounded, hallucination-free answers.\n</investigate_before_answering>'},
-  'no-overengineering':{label:'no-overengineering',text:"Avoid over-engineering. Only make changes that are directly requested or clearly necessary. Don't add features, refactors, docs, defensive code, or abstractions beyond the task. The right amount of complexity is the minimum needed."},
-  'general-solution':{label:'general-solution',text:"Write a high-quality, general-purpose solution using standard tools. Don't hard-code to specific test inputs; implement logic that works for all valid inputs. Tests verify correctness — they don't define the solution. If a task is infeasible or a test is wrong, say so rather than working around it."},
-  'autonomy-safety':{label:'autonomy-safety',text:'Take local, reversible actions freely (editing files, running tests), but for actions that are hard to reverse, affect shared systems, or are destructive (deleting files/branches, dropping tables, rm -rf, git push --force, posting to PRs/issues), ask before proceeding. Never use destructive shortcuts like --no-verify.'},
-  'cleanup-temp-files':{label:'cleanup-temp-files',text:'If you create any temporary files, scripts, or helper files for iteration, remove them at the end of the task.'},
-  'parallel-tools':{label:'parallel-tools',text:'<use_parallel_tool_calls>\nIf you intend to call multiple tools with no dependencies between them, make all the independent calls in parallel. If a call depends on a previous result, call them sequentially. Never use placeholders or guess missing parameters.\n</use_parallel_tool_calls>'},
-  'conservative-action':{label:'conservative-action',text:'<do_not_act_before_instructions>\nDo not change files unless clearly instructed. When intent is ambiguous, default to information, research, and recommendations rather than action.\n</do_not_act_before_instructions>'},
-  'self-check':{label:'self-check',text:'Before you finish, verify your answer against the success criteria / constraints above.'},
-  'avoid-markdown':{label:'avoid-markdown',text:'<avoid_excessive_markdown>\nWrite in clear flowing prose using complete paragraphs. Reserve markdown for inline code, code blocks, and simple headings. Avoid bullet/numbered lists unless presenting truly discrete items or asked for a list.\n</avoid_excessive_markdown>'},
-  'no-preamble':{label:'no-preamble',text:'Respond directly without preamble. Do not start with phrases like "Here is..." or "Based on...".'},
-};
-
-// ═══════════════ MIGRATION: promptology (ts_pm_*) → promptor (promptor_*) ═══════════════
-// One-time, purely additive merge by id. promptor_items is never replaced wholesale and
-// always wins on an id collision. ts_pm_items is deliberately left in place so
-// promptology.html keeps working. A done-flag keeps it idempotent, so an item deleted in
-// prompTOR after the merge is not resurrected on the next load.
-function migrateFromPromptology(){
-  const FLAG='promptor_migrated_ts_pm';
-  if(localStorage.getItem(FLAG)==='1') return;
-  const raw=localStorage.getItem('ts_pm_items');
-  // Nothing to migrate YET — do not burn the one-shot. promptology.html still ships, so a
-  // user can reach prompTOR first and create legacy items afterwards; consuming the flag
-  // here would strand that data permanently.
-  if(raw===null) return;
-  let legacy,mine;
-  try{ legacy=JSON.parse(raw); }catch(_){ return; }              // malformed: leave both, retry next load
-  try{ mine=JSON.parse(localStorage.getItem('promptor_items')||'{}'); }catch(_){ return; }
-  if(!legacy||typeof legacy!=='object'||Array.isArray(legacy)){ localStorage.setItem(FLAG,'1'); return; }
-  if(!mine||typeof mine!=='object'||Array.isArray(mine)) return; // do not clobber unreadable promptor data
-  let added=0;
-  Object.keys(legacy).forEach(id=>{
-    const it=legacy[id];
-    if(!it||typeof it!=='object') return;
-    if(Object.prototype.hasOwnProperty.call(mine,id)) return;    // id in both → keep prompTOR's
-    mine[id]={...it, id:it.id||id, mode:it.mode||'prompt', fields:it.fields||{}, files:it.files||{},
-              blocks:Array.isArray(it.blocks)?it.blocks:[], created:it.created||Date.now()};
-    added++;
-  });
-  if(added) localStorage.setItem('promptor_items',JSON.stringify(mine));
-  if(localStorage.getItem('promptor_basedir')===null){           // adopt base dir only if unset
-    const bd=localStorage.getItem('ts_pm_basedir');
-    if(bd!==null) localStorage.setItem('promptor_basedir',bd);
-  }
-  localStorage.setItem(FLAG,'1');
-}
-try{ migrateFromPromptology(); }catch(_){}                       // never let a storage error brick boot
-
-// ═══════════════ STATE ═══════════════
-let items = JSON.parse(localStorage.getItem('promptor_items') || '{}');
-let activeId=null, currentMode='prompt', previewMode='prompt';
-let baseDir = localStorage.getItem('promptor_basedir') || '~/Projects/';
-let outputFmt = localStorage.getItem('promptor_fmt') || 'xml';   // 'xml' | 'md'
-let vimOn = localStorage.getItem('promptor_vim')==='1';
-const vim = { mode:'insert', ta:null, pending:'', count:'', reg:'', undo:[], lastAction:'' };
-
-document.getElementById('basedir-input').value = baseDir;
-document.getElementById('basedir-input').addEventListener('input',e=>{baseDir=e.target.value;localStorage.setItem('promptor_basedir',baseDir);updatePreview();});
-
-function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');}
-
-function applyTemplateDefaults(item,{resetBlocks=false}={}){
-  const tpl=TEMPLATES[item.template]; if(!tpl)return;
-  (tpl.fields||[]).forEach(f=>{ if(f.prefill && !(item.fields[f.key]||'').trim()) item.fields[f.key]=f.prefill; });
-  if(resetBlocks || !Array.isArray(item.blocks)) item.blocks=[...(tpl.blocks||[])];
-}
-
-// ═══════════════ MODE / CRUD ═══════════════
-function setMode(m){
-  currentMode=m;
-  document.getElementById('tab-prompt').classList.toggle('active',m==='prompt');
-  document.getElementById('tab-task').classList.toggle('active',m==='task');
-  document.getElementById('sidebar-label').textContent = m==='task'?'tasks':'prompts';
-  if(activeId){ const tpl=m==='task'?'claude_code':'promptology'; document.getElementById('template-select').value=tpl;
-    items[activeId].template=tpl; applyTemplateDefaults(items[activeId],{resetBlocks:true}); save(); renderFields(activeId); }
-  renderSidebar();
-}
-function newItem(){
-  const id=genId(); const tpl=currentMode==='task'?'claude_code':'pe_general';
-  items[id]={id,name:'',template:tpl,mode:currentMode,status:'ready',created:Date.now(),fields:{},files:{},blocks:[]};
-  applyTemplateDefaults(items[id],{resetBlocks:true}); save(); loadItem(id);
-}
-function loadItem(id){
-  activeId=id; const item=items[id]; if(!item)return;
-  document.getElementById('empty').style.display='none';
-  ['topbar','fields-wrap','actions'].forEach(x=>document.getElementById(x).style.display=x==='fields-wrap'?'flex':'flex');
-  document.getElementById('name-input').value=item.name||'';
-  document.getElementById('template-select').value=item.template||'pe_general';
-  const ss=document.getElementById('status-select'); const td=TEMPLATES[item.template];
-  ss.style.display=(td&&td.isTask)?'block':'none'; ss.value=item.status||'ready';
-  renderFields(id); renderSidebar();
-}
-function deleteItem(id,e){
-  e.stopPropagation(); delete items[id]; save();
-  if(activeId===id){activeId=null; ['topbar','fields-wrap','actions'].forEach(x=>document.getElementById(x).style.display='none');
-    document.getElementById('empty').style.display='flex';
-    document.getElementById('preview-text').innerHTML='<span style="color:var(--surface3)">// output appears here</span>';}
-  renderSidebar();
-}
-function changeTemplate(){
-  if(!activeId)return; const tpl=document.getElementById('template-select').value;
-  items[activeId].template=tpl; const td=TEMPLATES[tpl];
-  document.getElementById('status-select').style.display=(td&&td.isTask)?'block':'none';
-  applyTemplateDefaults(items[activeId],{resetBlocks:true}); save(); renderFields(activeId);
-}
-
-// ═══════════════ RENDER FIELDS ═══════════════
-function renderFields(id){
-  const item=items[id]; const tpl=TEMPLATES[item.template]||TEMPLATES.promptology;
-  const fc=document.getElementById('fields-wrap'); fc.innerHTML='';
-  tpl.fields.forEach((f,i)=>{
-    const block=document.createElement('div'); block.className='field';
-    const tagName = item.template.startsWith('pe_')||item.template.startsWith('ts_')||['promptology','general','dev'].includes(item.template) ? slug(f.label) : null;
-    const head=document.createElement('div'); head.className='field-head';
-    head.innerHTML=`<div class="field-num">${i+1}</div>`+
-      (tagName?`<div class="field-tag"><span class="ang">&lt;</span>${tagName}<span class="ang">&gt;</span></div>`:'')+
-      `<div class="field-name">${f.label}</div><div class="field-hint">${f.hint}</div>`;
-    block.appendChild(head);
-    if(f.hasFiles){
-      const fileRow=document.createElement('div'); fileRow.className='file-row';
-      (item.files[f.key]||[]).forEach(fp=>fileRow.appendChild(makePill(fp,f.key)));
-      const addInput=document.createElement('input'); addInput.className='file-add-input';
-      addInput.placeholder='path/to/file  (Enter to add)'; addInput.spellcheck=false;
-      addInput.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===','){e.preventDefault();const raw=addInput.value.trim().replace(/,$/,'');if(raw)addFile(f.key,raw,fileRow,addInput);} });
-      fileRow.appendChild(addInput); block.appendChild(fileRow);
-    }
-    const ta=document.createElement('textarea'); ta.className='field-ta'; ta.dataset.key=f.key;
-    ta.placeholder=f.placeholder||''; ta.value=item.fields[f.key]||''; ta.spellcheck=false;
-    if(f.hasFiles) ta.style.display='none';
-    ta.addEventListener('input',()=>{autoResize(ta);saveCurrent();});
-    ta.addEventListener('keydown',e=>onFieldKeydown(e,ta));
-    ta.addEventListener('focus',()=>{ vim.ta=ta; if(vimOn){setVimMode('normal',ta.closest('.field'));} });
-    ta.addEventListener('keyup',()=>{ if(vimOn&&vim.mode==='visual') updateVimHud(); });
-    ta.addEventListener('click',()=>{ if(vimOn&&vim.mode==='visual') updateVimHud(); });
-    block.appendChild(ta);
-    fc.appendChild(block); setTimeout(()=>autoResize(ta),0);
-  });
-  if(Array.isArray(tpl.blockOptions)&&tpl.blockOptions.length){
-    if(!Array.isArray(item.blocks))item.blocks=[];
-    const bf=document.createElement('div'); bf.className='field blocks-field';
-    bf.innerHTML=`<div class="field-head"><div class="field-num">✓</div><div class="field-name">Best-Practice Blocks</div><div class="field-hint">click to include canned rules</div></div>`;
-    const row=document.createElement('div'); row.id='blocks-row';
-    tpl.blockOptions.forEach(key=>{ const blk=BLOCKS[key]; if(!blk)return; const on=item.blocks.includes(key);
-      const tog=document.createElement('div'); tog.className='block-toggle'+(on?' on':''); tog.title=blk.text;
-      tog.innerHTML=`<span class="bt-box">${on?'✓':''}</span><span>${blk.label}</span>`;
-      tog.onclick=()=>{ const j=item.blocks.indexOf(key); if(j>=0)item.blocks.splice(j,1);else item.blocks.push(key);
-        const nv=item.blocks.includes(key); tog.classList.toggle('on',nv); tog.querySelector('.bt-box').textContent=nv?'✓':'';
-        save();updatePreview(); };
-      row.appendChild(tog); });
-    bf.appendChild(row); fc.appendChild(bf);
-  }
-  updatePreview();
-}
-function makePill(fp,key){
-  const pill=document.createElement('div'); pill.className='file-pill';
-  const disp=fp.startsWith(baseDir)?fp.slice(baseDir.length).replace(/^\//,''):fp;
-  pill.innerHTML=`<span>${escHtml(disp)}</span>`;
-  const del=document.createElement('button'); del.className='file-pill-del'; del.textContent='×';
-  del.onclick=()=>{ if(!activeId)return; items[activeId].files[key]=(items[activeId].files[key]||[]).filter(x=>x!==fp); save(); pill.remove(); updatePreview(); };
-  pill.appendChild(del); return pill;
-}
-function addFile(key,raw,fileRow,addInput){
-  if(!activeId)return; const res=(raw.startsWith('/')||raw.startsWith('~')||raw.startsWith('.'))?raw:baseDir.replace(/\/$/,'')+'/'+raw;
-  if(!items[activeId].files[key])items[activeId].files[key]=[];
-  if(items[activeId].files[key].includes(res)){addInput.value='';return;}
-  items[activeId].files[key].push(res); save(); fileRow.insertBefore(makePill(res,key),addInput); addInput.value=''; updatePreview();
-}
-
-// ═══════════════ SAVE / BUILD ═══════════════
-function saveCurrent(){
-  if(!activeId)return; const item=items[activeId];
-  item.name=document.getElementById('name-input').value; item.status=document.getElementById('status-select').value;
-  document.querySelectorAll('.field-ta').forEach(ta=>item.fields[ta.dataset.key]=ta.value);
-  item.updated=Date.now(); save(); renderSidebar(); updatePreview();
-}
-function save(){ localStorage.setItem('promptor_items',JSON.stringify(items)); }
-
-function buildOutput(itemArg){
-  const item=itemArg||(activeId?items[activeId]:null); if(!item)return '';
-  const tpl=TEMPLATES[item.template]||TEMPLATES.promptology; const xml=outputFmt==='xml';
-  const lines=[];
-  const sect=(label,body,{code=false}={})=>{
-    const tag=slug(label);
-    if(xml){ lines.push(`<${tag}>`); lines.push(body); lines.push(`</${tag}>`); }
-    else { lines.push(`# ${label}`); if(code){lines.push('```');lines.push(body);lines.push('```');} else lines.push(body); }
-    lines.push('');
-  };
-  if(tpl.isTask){
-    const tid=(item.fields.task_id||'').trim(), nm=(item.name||'Untitled Task').trim(),
-          st=(item.status||'ready').toUpperCase(), dep=(item.fields.depends||'').trim();
-    if(tid||nm){ if(xml){ lines.push(`<task id="${tid||'??'}" status="${st}"${dep?` depends="${dep}"`:''}>`); lines.push(nm); lines.push('</task>'); }
-      else { lines.push(`## [${tid||'??'}] ${nm}`); if(dep)lines.push(`Depends on: ${dep}`); lines.push(`Status: ${st}`); } lines.push(''); }
-  }
-  tpl.fields.forEach(f=>{
-    if(f.key==='task_id'||f.key==='depends')return;
-    if(f.hasFiles){ const files=item.files[f.key]||[]; if(!files.length)return;
-      sect(f.label, files.map(fp=>`- ${fp}`).join('\n')); return; }
-    const val=(item.fields[f.key]||'').trim(); if(!val)return;
-    sect(f.label,val,{code:(f.key==='state'||f.key==='error')});
-  });
-  const bk=(item.blocks||[]).filter(k=>BLOCKS[k]);
-  if(bk.length){ sect('Guidelines', bk.map(k=>BLOCKS[k].text).join('\n\n')); }
-  return lines.join('\n').trim();
-}
-
-// ═══════════════ FORMAT / PREVIEW ═══════════════
-function setFmt(f){ outputFmt=f; localStorage.setItem('promptor_fmt',f);
-  document.getElementById('fmt-xml').classList.toggle('on',f==='xml');
-  document.getElementById('fmt-md').classList.toggle('on',f==='md'); updatePreview(); }
-function setPreview(m){ previewMode=m;
-  document.getElementById('ptab-prompt').classList.toggle('active',m==='prompt');
-  document.getElementById('ptab-eval').classList.toggle('active',m==='eval');
-  updatePreview(); }
-function copyPreview(){
-  if(previewMode==='eval'){ if(!activeId)return; navigator.clipboard.writeText(generateEval(items[activeId])).then(()=>toast('Eval stub copied')); }
-  else { copyPrompt(); }
-}
-function copyPrompt(){
-  saveCurrent();
-  const text = buildOutput();
-  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard'));
-}
-function copyRaw(){
-  saveCurrent();
-  navigator.clipboard.writeText(buildOutput()).then(() => toast('Raw copied'));
-}
-function updateCharCount(){
-  document.getElementById('char-count').textContent = buildOutput().length + ' chars';
-}
-function updatePreview(){
-  const el=document.getElementById('preview-text');
-  updateCharCount();
-  if(previewMode==='eval'){
-    if(!activeId){el.innerHTML='<span style="color:var(--surface3)">// select a prompt to generate an eval</span>';return;}
-    el.innerHTML=escHtml(generateEval(items[activeId]))
-      .replace(/^(# .*)$/gm,'<span class="pv-head">$1</span>')
-      .replace(/^(```.*)$/gm,'<span class="pv-fence">$1</span>'); return;
-  }
-  const text=buildOutput();
-  if(!text){el.innerHTML='<span style="color:var(--surface3)">// output appears here</span>';return;}
-  el.innerHTML=escHtml(text)
-    .replace(/^(&lt;\/?[a-z0-9_]+(?:\s[^&]*?)?&gt;)$/gm,'<span class="pv-tag">$1</span>')
-    .replace(/^(## \[.*?\].*)/gm,'<span class="pv-head">$1</span>')
-    .replace(/^(# [A-Z].*)/gm,'<span class="pv-head">$1</span>')
-    .replace(/^(- [~\/.].*)/gm,'<span class="pv-file">$1</span>')
-    .replace(/^(Status: .*|Depends on: .*)$/gm,'<span class="pv-meta">$1</span>');
-}
-function saveMd(){
-  if(!activeId)return; saveCurrent(); const item=items[activeId];
-  const ext=outputFmt==='xml'?'xml':'md'; const nm=(item.name||'prompt').replace(/[^a-z0-9_\-]/gi,'_').toLowerCase();
-  const blob=new Blob([buildOutput()],{type:'text/plain'}); const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=`${nm}.${ext}`; a.click(); toast('Saved .'+ext);
-}
-
-// ═══════════════ EVAL STUB ═══════════════
-function generateEval(item){
-  const tpl=TEMPLATES[item.template]||{}; const grader=tpl.evalGrader||'llm';
-  const sys=buildOutput(item).replace(/"""/g,"'''"); const name=item.name||tpl.label||'prompt';
-  let criteria,cases,graderFn,graderName,pass;
-  if(grader==='json'||grader==='exact'){
-    criteria=`- Output is 100% valid & matches the expected shape (E-S1)\n- Accuracy >= {{0.90}} on the seed set (E-S2 — set threshold)\n- 0 spurious fields / hallucinated labels (E-S4)`;
-    cases=[`{"input": "{{typical 1}}",        "expected": "{{answer}}"},`,
-      `{"input": "{{typical 2}}",        "expected": "{{answer}}"},`,
-      `{"input": "",                     "expected": "{{answer}}"},   # edge: empty`,
-      `{"input": "{{very long input}}",  "expected": "{{answer}}"},   # edge: length`,
-      `{"input": "{{ambiguous}}",        "expected": "{{answer}}"},   # edge: humans disagree`];
-    graderName=grader==='json'?'grade_json':'grade_exact';
-    graderFn=grader==='json'
-      ?`def grade_json(out, case):            # E-G1 code: valid JSON w/ required keys\n    import json\n    try: obj = json.loads(out)\n    except json.JSONDecodeError: return False\n    return all(k in obj for k in case.get("required_keys", []))`
-      :`def grade_exact(out, case):           # E-G1 code: exact match\n    return out.strip().lower() == case["expected"].strip().lower()`;
-    pass=`v is True`;
-  } else if(grader==='code'){
-    criteria=`- All listed tests pass (E-G1 code-based)\n- Solution is general, not hard-coded (I3)\n- No edits outside declared scope (I2)`;
-    cases=[`{"input": "{{run: pytest -q}}",        "expected": "all pass"},`,
-      `{"input": "{{run: ruff / typecheck}}", "expected": "clean"},`,
-      `{"input": "{{edge: empty/malformed}}", "expected": "handled, no crash"},  # edge`,
-      `{"input": "{{edge: boundary value}}",  "expected": "correct"},            # edge`];
-    graderName='grade_code';
-    graderFn=`def grade_code(out, case):            # E-G1 code: wire to your test runner\n    # e.g. subprocess.run(["pytest","-q"]).returncode == 0\n    return "{{assert}}" in out`;
-    pass=`v is True`;
-  } else {
-    criteria=`- Judge rates >= {{4}}/5 (or 'correct') vs the rubric (E-G3)\n- >= {{0.90}} of the seed set passes (E-S2)\n- Hard constraints (length/sections) also pass a cheap code check`;
-    cases=[`{"input": "{{typical 1}}",        "rubric": "{{what a good answer must contain}}"},`,
-      `{"input": "{{typical 2}}",        "rubric": "{{...}}"},`,
-      `{"input": "",                     "rubric": "{{handles empty input gracefully}}"},   # edge`,
-      `{"input": "{{very long}}",        "rubric": "{{stays on task}}"},                    # edge`,
-      `{"input": "{{adversarial}}",      "rubric": "{{refuses or redirects}}"},             # edge`];
-    graderName='grade_llm';
-    graderFn=`def grade_llm(out, case):             # E-G3 LLM-as-judge: reason then verdict\n    p = (f"Grade the answer against the rubric.\\n<rubric>{case['rubric']}</rubric>\\n"\n         f"<answer>{out}</answer>\\nThink in <thinking> tags, then output exactly "\n         f"'correct' or 'incorrect' in <result> tags.")\n    v = client.messages.create(model=GRADER_MODEL, max_tokens=1024,\n            messages=[{"role":"user","content":p}]).content[0].text.lower()\n    return "<result>correct</result>" in v`;
-    pass=`v is True`;
-  }
-  const py=`"""Eval stub for: ${name}\nAuto-generated by prompTOR. Grader: ${graderName} (template '${item.template}').\n  pip install anthropic ; export ANTHROPIC_API_KEY=... ; python eval_${item.template}.py\n"""\nimport anthropic\nclient = anthropic.Anthropic()\n\nCANDIDATE_MODEL = "claude-opus-4-8"\nGRADER_MODEL    = "claude-opus-4-8"   # E-G3.4: prefer a separate grader\n\nSYSTEM_PROMPT = """${sys}"""\n\n# E-D1: typical + labeled edge cases.  E-D3: seed — expand to dozens.\nTEST_CASES = [\n    ${cases.join('\n    ')}\n]\n\n${graderFn}\n\ndef get_completion(test_input):\n    return client.messages.create(\n        model=CANDIDATE_MODEL, max_tokens=1024, system=SYSTEM_PROMPT,\n        messages=[{"role":"user","content":str(test_input)}],\n    ).content[0].text\n\ndef main():\n    ok = 0\n    for case in TEST_CASES:\n        out = get_completion(case["input"])\n        v = ${graderName}(out, case)\n        passed = ${pass}\n        ok += passed\n        print(("PASS" if passed else "FAIL"), repr(str(case["input"])[:48]))\n    print(f"\\nScore: {ok/len(TEST_CASES)*100:.1f}%  ({ok}/{len(TEST_CASES)})")\n\nif __name__ == "__main__":\n    main()\n`;
-  return `# Eval stub — ${name}\n# grader: ${graderName} (auto-selected from template)\n\n# Success criteria (S·M·A·R)\n${criteria}\n\n# Runnable harness (eval_${item.template}.py)\n\`\`\`python\n${py}\`\`\`\n`;
-}
-
-// ═══════════════ SIDEBAR ═══════════════
-function renderSidebar(){
-  const list=document.getElementById('item-list');
-  const sorted=Object.values(items).filter(i=>(i.mode||'prompt')===currentMode).sort((a,b)=>(b.updated||b.created)-(a.updated||a.created));
-  document.getElementById('item-count').textContent=sorted.length;
-  list.innerHTML=sorted.map(item=>{
-    const label=item.name||'Untitled';
-    const date=new Date(item.updated||item.created).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    const td=TEMPLATES[item.template]||{};
-    const bc=td.isTask?(item.status==='done'?'badge-done':item.status==='blocked'?'badge-blocked':'badge-task'):(item.template&&item.template.startsWith('pe_')?'badge-pe':'badge-prompt');
-    const bl=td.isTask?(item.status||'ready'):(td.label||'prompt').replace('PE — ','');
-    return `<div class="list-item ${item.id===activeId?'active':''}" onclick="loadItem('${item.id}')">
-      <div class="item-title">${escHtml(label)}</div>
-      <div class="item-meta"><span class="item-badge ${bc}">${escHtml(bl)}</span><span class="item-date">${date}</span></div>
-      <button class="item-del" onclick="deleteItem('${item.id}',event)">×</button></div>`;
-  }).join('');
-}
-
-// ═══════════════ VIM ENGINE ═══════════════
-function setVim(on){
-  vimOn=on; localStorage.setItem('promptor_vim',on?'1':'0');
-  document.getElementById('vim-on').classList.toggle('on',on);
-  document.getElementById('vim-off').classList.toggle('on',!on);
-  if(on){ const ta=document.activeElement&&document.activeElement.classList.contains('field-ta')?document.activeElement:document.querySelector('.field-ta');
-    if(ta){ta.focus(); setVimMode('normal',ta.closest('.field'));} else setVimMode('insert',null); }
-  else { setVimMode('off',null); document.querySelectorAll('.field').forEach(f=>f.classList.remove('vim-normal','vim-visual')); }
-}
-function setVimMode(m,fieldEl){
-  vim.mode=m; vim.pending=''; vim.count='';
-  document.querySelectorAll('.field').forEach(f=>f.classList.remove('vim-normal','vim-visual'));
-  if(fieldEl){ if(m==='normal')fieldEl.classList.add('vim-normal'); if(m==='visual')fieldEl.classList.add('vim-visual'); }
-  updateVimHud();
-}
-const HINTS={
-  off:'vim editing is off — flip the VIM switch to drill modal editing',
-  insert:'<b>INSERT</b> — type freely · <b>Esc</b> back to NORMAL · Enter still inserts a newline here',
-  normal:'<b>NORMAL</b> — move <b>hjkl w e b 0 $ ^ gg G</b> · edit <b>x dd dw cc cw D C yy p u</b> · <b>i a o</b> insert · <b>v</b> visual',
-  visual:'<b>VISUAL</b> — extend with motions · <b>d</b> delete · <b>y</b> yank · <b>c</b> change · <b>Esc</b> cancel',
-};
-function updateVimHud(){
-  const me=document.getElementById('vim-mode'), hi=document.getElementById('vim-hint');
-  const map={off:['vm-off','VIM OFF'],insert:['vm-insert','INSERT'],normal:['vm-normal','NORMAL'],visual:['vm-visual','VISUAL']};
-  const [cls,lbl]=map[vim.mode]||map.off; me.className=cls; me.textContent=lbl;
-  let h=HINTS[vim.mode]||HINTS.off;
-  if(vim.pending) h=`<b>${vim.pending}</b> pending — motion? <b>w e b $ 0 ^</b> or <b>${vim.pending}${vim.pending}</b> for whole line`;
-  else if(vim.lastAction) h=`<b>${vim.lastAction}</b> · `+h;
-  hi.innerHTML=h;
-}
-// textarea helpers
-function lnStart(v,p){return v.lastIndexOf('\n',p-1)+1;}
-function lnEnd(v,p){const i=v.indexOf('\n',p);return i<0?v.length:i;}
-function col(v,p){return p-lnStart(v,p);}
-function wordFwd(v,p){const n=v.length; while(p<n&&/\w/.test(v[p]))p++; while(p<n&&/\s/.test(v[p])&&v[p]!=='\n')p++; if(p<n&&!/\w/.test(v[p])&&!/\s/.test(v[p]))while(p<n&&!/\w/.test(v[p])&&!/\s/.test(v[p]))p++; while(p<n&&/\s/.test(v[p])&&v[p]!=='\n')p++; return p;}
-function wordBack(v,p){p--; while(p>0&&/\s/.test(v[p]))p--; while(p>0&&/\w/.test(v[p-1]))p--; return Math.max(0,p);}
-function wordEnd(v,p){const n=v.length; p++; while(p<n&&/\s/.test(v[p]))p++; while(p+1<n&&/\w/.test(v[p+1]))p++; return Math.min(n,p);}
-function pushUndo(ta){ vim.undo.push({v:ta.value,p:ta.selectionStart}); if(vim.undo.length>100)vim.undo.shift(); }
-function setCur(ta,p){ p=Math.max(0,Math.min(ta.value.length,p)); ta.selectionStart=ta.selectionEnd=p; }
-
-function onFieldKeydown(e,ta){
-  if(!vimOn){ handleTabNav(e); return; }
-  if(vim.mode==='insert'){ if(e.key==='Escape'){e.preventDefault(); pushUndo(ta); setVimMode('normal',ta.closest('.field')); vim.lastAction='→normal'; return;} handleTabNav(e); return; }
-  // NORMAL / VISUAL
-  if(e.key==='Shift'||e.key==='Control'||e.key==='Alt'||e.key==='Meta')return;
-  if(e.metaKey||e.ctrlKey||e.altKey)return;
-  e.preventDefault();
-  const v=ta.value; let p=ta.selectionStart; const fieldEl=ta.closest('.field'); const k=e.key; const vis=vim.mode==='visual';
-  const moveTo=(np)=>{ if(vis){ ta.selectionEnd=Math.max(np, ta.selectionStart===vim.anchor?vim.anchor:ta.selectionStart); // simple extend
-        if(np<vim.anchor){ta.selectionStart=np;ta.selectionEnd=vim.anchor;} else {ta.selectionStart=vim.anchor;ta.selectionEnd=np;} }
-      else setCur(ta,np); updateVimHud(); };
-  const delRange=(a,b,enterInsert)=>{ pushUndo(ta); vim.reg=v.slice(a,b); ta.value=v.slice(0,a)+v.slice(b); setCur(ta,a); saveCurrent(); autoResize(ta);
-      if(enterInsert)setVimMode('insert',fieldEl); else setVimMode('normal',fieldEl); };
-
-  // operator pending (d/c/y already pressed)
-  if(vim.pending){
-    const op=vim.pending; vim.pending='';
-    let a=p,b=p;
-    if(k===op){ a=lnStart(v,p); b=Math.min(v.length,lnEnd(v,p)+1); } // dd/cc/yy
-    else if(k==='w'){ b=wordFwd(v,p); } else if(k==='e'){ b=wordEnd(v,p)+1; }
-    else if(k==='b'){ a=wordBack(v,p); } else if(k==='$'){ b=lnEnd(v,p); }
-    else if(k==='0'){ a=lnStart(v,p); } else if(k==='^'){ a=lnStart(v,p); }
-    else { updateVimHud(); return; }
-    if(op==='y'){ vim.reg=v.slice(a,b); vim.lastAction='yank'; updateVimHud(); return; }
-    delRange(a,b,op==='c'); vim.lastAction=op==='c'?'change':'delete'; return;
-  }
-  switch(k){
-    case 'Escape': if(vis){setVimMode('normal',fieldEl);} vim.lastAction=''; break;
-    case 'h': moveTo(p-(col(v,p)>0?1:0)); break;
-    case 'l': moveTo(p<lnEnd(v,p)?p+1:p); break;
-    case ' ': moveTo(p+1); break;
-    case 'j':{ const c=col(v,p); const ne=lnEnd(v,p); if(ne<v.length){const ns=ne+1; moveTo(Math.min(ns+c,lnEnd(v,ns)));} break; }
-    case 'k':{ const ls=lnStart(v,p); if(ls>0){const c=col(v,p); const ps=lnStart(v,ls-1); moveTo(Math.min(ps+c,lnEnd(v,ps)));} break; }
-    case 'w': moveTo(wordFwd(v,p)); break;
-    case 'e': moveTo(wordEnd(v,p)); break;
-    case 'b': moveTo(wordBack(v,p)); break;
-    case '0': moveTo(lnStart(v,p)); break;
-    case '$': moveTo(lnEnd(v,p)); break;
-    case '^':{ let s=lnStart(v,p); while(s<v.length&&/[ \t]/.test(v[s]))s++; moveTo(s); break; }
-    case 'G': moveTo(lnStart(v,v.length)); break;
-    case 'g': if(vim._g){vim._g=false; moveTo(0);} else {vim._g=true; setTimeout(()=>vim._g=false,400);} break;
-    case 'x': delRange(p,Math.min(v.length,p+1),false); vim.lastAction='x'; break;
-    case 'D': delRange(p,lnEnd(v,p),false); vim.lastAction='D'; break;
-    case 'C': delRange(p,lnEnd(v,p),true); vim.lastAction='C'; break;
-    case 'd': if(vis){const a=ta.selectionStart,b=ta.selectionEnd; delRange(a,b,false); vim.lastAction='delete';} else {vim.pending='d'; updateVimHud();} break;
-    case 'c': if(vis){const a=ta.selectionStart,b=ta.selectionEnd; delRange(a,b,true); vim.lastAction='change';} else {vim.pending='c'; updateVimHud();} break;
-    case 'y': if(vis){vim.reg=v.slice(ta.selectionStart,ta.selectionEnd); setVimMode('normal',fieldEl); vim.lastAction='yank';} else {vim.pending='y'; updateVimHud();} break;
-    case 'p':{ pushUndo(ta); const ins=p<v.length?p+1:p; ta.value=v.slice(0,ins)+vim.reg+v.slice(ins); setCur(ta,ins+vim.reg.length-1); saveCurrent(); autoResize(ta); vim.lastAction='paste'; break; }
-    case 'P':{ pushUndo(ta); ta.value=v.slice(0,p)+vim.reg+v.slice(p); setCur(ta,p+vim.reg.length-1); saveCurrent(); autoResize(ta); vim.lastAction='paste'; break; }
-    case 'i': setVimMode('insert',fieldEl); break;
-    case 'I': setCur(ta,(()=>{let s=lnStart(v,p);while(s<v.length&&/[ \t]/.test(v[s]))s++;return s;})()); setVimMode('insert',fieldEl); break;
-    case 'a': setCur(ta,p+1); setVimMode('insert',fieldEl); break;
-    case 'A': setCur(ta,lnEnd(v,p)); setVimMode('insert',fieldEl); break;
-    case 'o':{ pushUndo(ta); const le=lnEnd(v,p); ta.value=v.slice(0,le)+'\n'+v.slice(le); setCur(ta,le+1); saveCurrent(); autoResize(ta); setVimMode('insert',fieldEl); break; }
-    case 'O':{ pushUndo(ta); const ls=lnStart(v,p); ta.value=v.slice(0,ls)+'\n'+v.slice(ls); setCur(ta,ls); saveCurrent(); autoResize(ta); setVimMode('insert',fieldEl); break; }
-    case 'v': vim.anchor=p; ta.selectionStart=p; ta.selectionEnd=Math.min(v.length,p+1); setVimMode('visual',fieldEl); break;
-    case 'u': if(vim.undo.length){const s=vim.undo.pop(); ta.value=s.v; setCur(ta,s.p); saveCurrent(); autoResize(ta); vim.lastAction='undo';} break;
-    default: return;
-  }
-  if(!['d','c','y'].includes(k)) updateVimHud();
-}
-
-// ═══════════════ CHEATSHEET ═══════════════
-const CHEAT=[
-  ['grp','Modes'],['i / I','insert before / line-start'],['a / A','insert after / line-end'],['o / O','open line below / above'],['Esc','back to NORMAL'],['v','visual select'],
-  ['grp','Move'],['h j k l','left down up right'],['w / e / b','word fwd / end / back'],['0 / $','line start / end'],['^','first non-blank'],['gg / G','top / bottom'],
-  ['grp','Edit'],['x','delete char'],['dd / D','delete line / to end'],['cc / C','change line / to end'],['dw cw db','operator + motion'],['yy / p / P','yank / paste after / before'],['u','undo'],
-  ['grp','Not supported'],['macros q@','—'],['marks m','—'],[':ex / :s','—'],['ctrl-v block','—'],
-];
-function buildCheat(){ const g=document.getElementById('cheat-grid');
-  g.innerHTML=CHEAT.map(([a,b])=>a==='grp'?`<div class="grp">${b}</div>`:`<div class="k">${escHtml(a)}</div><div class="d">${escHtml(b)}</div>`).join(''); }
-function toggleCheat(){ document.getElementById('modal-bg').classList.toggle('show'); }
-
-// ═══════════════ UTILS ═══════════════
-function autoResize(ta){ ta.style.height='auto'; ta.style.height=Math.max(70,ta.scrollHeight)+'px'; }
-function handleTabNav(e){
-  const ta=e.target;
-  if(e.key==='Tab'){ e.preventDefault(); const s=ta.selectionStart,en=ta.selectionEnd,val=ta.value;
-    if(s===en){ if(e.shiftKey){const ls=val.lastIndexOf('\n',s-1)+1;const line=val.slice(ls);const sp=line.match(/^ {1,2}/);if(sp){ta.value=val.slice(0,ls)+line.slice(sp[0].length);ta.selectionStart=ta.selectionEnd=Math.max(ls,s-sp[0].length);}}
-      else{ta.value=val.slice(0,s)+'  '+val.slice(en);ta.selectionStart=ta.selectionEnd=s+2;} }
-    else{ const ls=val.lastIndexOf('\n',s-1)+1; const blk=val.slice(ls,en); const r=e.shiftKey?blk.replace(/^( {1,2})/gm,''):blk.replace(/^/gm,'  ');
-      ta.value=val.slice(0,ls)+r+val.slice(en); ta.selectionStart=ls; ta.selectionEnd=ls+r.length; }
-    saveCurrent(); autoResize(ta); return; }
-  if(e.key==='Enter'){ const s=ta.selectionStart,val=ta.value; const ls=val.lastIndexOf('\n',s-1)+1; const line=val.slice(ls,s);
-    const m=line.match(/^(\s*)([-*]\s|(\d+)\.\s)/); if(m){ const indent=m[1],bullet=m[2],num=m[3]; const content=line.slice(m[0].length);
-      if(!content.trim()){e.preventDefault();ta.value=val.slice(0,ls)+'\n'+val.slice(s);ta.selectionStart=ta.selectionEnd=ls+1;saveCurrent();autoResize(ta);return;}
-      e.preventDefault(); const next=num?indent+(parseInt(num)+1)+'. ':indent+bullet;
-      ta.value=val.slice(0,s)+'\n'+next+val.slice(s); ta.selectionStart=ta.selectionEnd=s+1+next.length; saveCurrent(); autoResize(ta); } }
-}
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// global Esc closes modal
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('modal-bg').classList.contains('show')){toggleCheat();} });
-
-// ═══════════════ INIT ═══════════════
-buildCheat();
-setFmt(outputFmt);
-document.getElementById('vim-on').classList.toggle('on',vimOn);
-document.getElementById('vim-off').classList.toggle('on',!vimOn);
-setVimMode(vimOn?'insert':'off',null);
-renderSidebar();
-</script>
+<script src="src/model.js"></script>
+<script src="src/serialize.js"></script>
+<script src="src/complete.js"></script>
+<script src="src/store.js"></script>
+<script src="src/search.js"></script>
+<script src="src/seed.js"></script>
+<script src="src/ui.js"></script>
 </body>
 </html>
