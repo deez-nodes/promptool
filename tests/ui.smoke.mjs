@@ -4,7 +4,11 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const SRC = 'C:/Dev/promptor-desktop/promptool/src';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SRC = path.resolve(__dirname, '../src');
 
 /* ── DOM shim ────────────────────────────────────────────────────────────── */
 class El {

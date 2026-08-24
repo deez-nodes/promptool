@@ -1,0 +1,8 @@
+{
+  "name": "RevX IDE & PrompTool",
+  "description": "RevX Smart Contract IDE for Polkadot Rust & PolkaVM with PrompTool Studio",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

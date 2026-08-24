@@ -1,0 +1,26 @@
+{
+  "name": "promptool",
+  "version": "1.0.0",
+  "description": "prompTOR prompt engineering tool",
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0 --port 3000",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview --host 0.0.0.0 --port 3000",
+    "start": "node .output/server/index.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@nuxtjs/tailwindcss": "^6.13.1",
+    "autoprefixer": "^10.4.20",
+    "express": "^5.2.1",
+    "highlight.js": "^11.11.1",
+    "lucide-vue-next": "^0.475.0",
+    "nuxt": "^3.15.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  }
+}
