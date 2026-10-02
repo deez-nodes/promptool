@@ -44,6 +44,19 @@
         <span>PrompTool</span>
         <span class="text-[9px] px-1 py-0.2 rounded bg-miku/20 text-miku font-mono">2nd Page</span>
       </NuxtLink>
+
+      <NuxtLink
+        to="/md2xml"
+        :class="[
+          'flex items-center gap-1.5 px-3 py-1 rounded font-rajdhani font-bold text-xs tracking-wider uppercase transition-all duration-150',
+          route.path === '/md2xml'
+            ? 'bg-surface3 text-acid shadow-sm border border-border2'
+            : 'text-muted hover:text-text hover:bg-surface3/50'
+        ]"
+      >
+        <span class="text-acid font-bold">md</span>
+        <span>md2xml</span>
+      </NuxtLink>
     </div>
 
     <!-- Dynamic Actions Based on Current Page -->
